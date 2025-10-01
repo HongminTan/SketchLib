@@ -1,4 +1,4 @@
 build/*
 cmake/*
-.venv
-.vscode
+venv/
+.vscode/
