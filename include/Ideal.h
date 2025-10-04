@@ -20,6 +20,10 @@ class Ideal : public Sketch {
     inline size_t get_flow_count() const { return flow_counter.size(); }
 
     inline void clear() override { flow_counter.clear(); }
+
+    inline std::unordered_map<TwoTuple, uint64_t, TwoTupleHash> get_raw_data() {
+        return flow_counter;
+    }
 };
 
 #endif /* IDEAL_H */
