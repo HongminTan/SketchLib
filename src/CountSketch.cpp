@@ -60,5 +60,5 @@ uint64_t CountSketch::query(const TwoTuple& flow) {
     } else {
         median_value = estimates[median_index];
     }
-    return static_cast<uint64_t>(std::max(0LL, median_value));
+    return static_cast<uint64_t>(std::max(int64_t(0), median_value));
 }

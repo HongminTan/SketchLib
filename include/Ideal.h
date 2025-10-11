@@ -1,6 +1,7 @@
 #ifndef IDEAL_H
 #define IDEAL_H
 
+#include <cstddef>
 #include <unordered_map>
 
 #include "Sketch.h"
