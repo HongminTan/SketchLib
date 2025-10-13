@@ -35,6 +35,10 @@ class CountMin : public Sketch {
     inline uint64_t get_rows() const { return rows; }
     inline uint64_t get_cols() const { return cols; }
 
+    inline const std::vector<std::vector<uint32_t>>& get_raw_data() const {
+        return counter_matrix;
+    }
+
     inline void clear() {
         for (auto& row : counter_matrix) {
             std::fill(row.begin(), row.end(), 0);

@@ -22,7 +22,8 @@ class Ideal : public Sketch {
 
     inline void clear() override { flow_counter.clear(); }
 
-    inline std::unordered_map<TwoTuple, uint64_t, TwoTupleHash> get_raw_data() {
+    inline const std::unordered_map<TwoTuple, uint64_t, TwoTupleHash>&
+    get_raw_data() {
         return flow_counter;
     }
 };
