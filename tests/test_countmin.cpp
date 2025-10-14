@@ -1,7 +1,7 @@
 #include "../third_party/doctest.h"
 
-#include "HashFunction.h"
 #include "CountMin.h"
+#include "HashFunction.h"
 
 TEST_SUITE("CountMin Tests") {
     TEST_CASE("Default Hash Function") {
@@ -15,7 +15,7 @@ TEST_SUITE("CountMin Tests") {
         CHECK(result >= 5);
     }
 
-    TEST_CASE("Custom Hash Function") {
+    TEST_CASE("Custom Hash Function - SpookyV2") {
         auto custom_hash = std::make_unique<SpookyV2HashFunction>();
         CountMin cm(5, 2048, std::move(custom_hash));
 
@@ -27,6 +27,20 @@ TEST_SUITE("CountMin Tests") {
 
         uint64_t result = cm.query(flow);
         CHECK(result >= 10);
+    }
+
+    TEST_CASE("Custom Hash Function - MurmurV3") {
+        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
+        CountMin cm(5, 2048, std::move(custom_hash));
+
+        TwoTuple flow(0xAABBCCDD, 0xEEFF0011);
+
+        for (int i = 0; i < 15; i++) {
+            cm.update(flow);
+        }
+
+        uint64_t result = cm.query(flow);
+        CHECK(result >= 15);
     }
 
     TEST_CASE("Insert Different Flows") {

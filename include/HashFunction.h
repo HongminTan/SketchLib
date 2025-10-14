@@ -9,6 +9,10 @@
 #include "TwoTuple.h"
 #include "seed_list.h"
 
+extern "C" {
+#include "../third_party/crc64.h"
+}
+
 /**
  * @brief 哈希函数抽象基类
  */
@@ -57,6 +61,20 @@ class SpookyV2HashFunction : public HashFunction {
     }
 };
 
-using DefaultHashFunction = MurmurV3HashFunction;
+/**
+ * @brief 基于 CRC64 的哈希函数实现
+ * 使用 Redis CRC64 算法和 seed_list 中的质数作为种子
+ */
+class CRC64HashFunction : public HashFunction {
+   public:
+    uint64_t hash(const TwoTuple& flow,
+                  uint64_t seed,
+                  uint64_t mod) const override;
+    std::unique_ptr<HashFunction> clone() const override {
+        return std::make_unique<CRC64HashFunction>();
+    }
+};
+
+using DefaultHashFunction = CRC64HashFunction;
 
 #endif  // HASH_FUNCTION_H

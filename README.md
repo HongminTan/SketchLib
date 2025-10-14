@@ -127,6 +127,7 @@ SketchLib/
 │
 ├── third_party/                # 第三方库
 │   ├── doctest.h               # 测试框架
+│   ├── crc64.h/c               # Redis CRC64 哈希函数
 │   ├── MurmurHash3.h/cpp       # MurmurHash3 哈希函数
 │   └── SpookyV2.h/cpp          # SpookyHash 哈希函数
 │
@@ -152,6 +153,7 @@ SketchLib/
 
 本项目使用了以下优秀的第三方库：
 
+- **[Redis CRC64](https://github.com/redis/redis)** - Redis 5.0 中的 CRC64 实现，采用 Jones 多项式
 - **[MurmurHash3](https://github.com/aappleby/smhasher)** - Austin Appleby 开发的高性能非加密哈希函数
 - **[SpookyHash](http://burtleburtle.net/bob/hash/spooky.html)** - Bob Jenkins 开发的快速哈希函数
 - **[doctest](https://github.com/doctest/doctest)** - Viktor Kirilov 开发的轻量级 C++ 测试框架

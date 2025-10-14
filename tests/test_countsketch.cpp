@@ -1,7 +1,7 @@
 #include "../third_party/doctest.h"
 
-#include "HashFunction.h"
 #include "CountSketch.h"
+#include "HashFunction.h"
 
 TEST_SUITE("CountSketch Tests") {
     TEST_CASE("Default Hash Function") {
@@ -12,7 +12,8 @@ TEST_SUITE("CountSketch Tests") {
         cs.update(flow, 5);
         uint64_t result = cs.query(flow);
 
-        CHECK(result >= 5);
+        CHECK(result >= 4);
+        CHECK(result <= 6);
     }
 
     TEST_CASE("Multiple Updates and Queries") {
@@ -32,7 +33,8 @@ TEST_SUITE("CountSketch Tests") {
             TwoTuple flow(f.first, f.second);
             uint64_t result = cs.query(flow);
             // 允许一定的估计误差
-            CHECK(result >= 8);
+            CHECK(result >= 9);
+            CHECK(result <= 11);
         }
     }
 
@@ -64,7 +66,7 @@ TEST_SUITE("CountSketch Tests") {
         CHECK(result1 == result2);
     }
 
-    TEST_CASE("Custom Hash Function") {
+    TEST_CASE("Custom Hash Function - SpookyV2") {
         auto custom_hash = std::make_unique<SpookyV2HashFunction>();
         CountSketch cs(3, 1024, std::move(custom_hash));
 
@@ -73,7 +75,21 @@ TEST_SUITE("CountSketch Tests") {
         cs.update(flow, 25);
         uint64_t result = cs.query(flow);
 
-        CHECK(result >= 25);
+        CHECK(result >= 22);
+        CHECK(result <= 27);
+    }
+
+    TEST_CASE("Custom Hash Function - MurmurV3") {
+        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
+        CountSketch cs(4, 2048, std::move(custom_hash));
+
+        TwoTuple flow(0x12345678, 0x9ABCDEF0);
+
+        cs.update(flow, 30);
+        uint64_t result = cs.query(flow);
+
+        CHECK(result >= 27);
+        CHECK(result <= 33);
     }
 
     TEST_CASE("Get Parameters") {
