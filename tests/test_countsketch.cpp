@@ -92,6 +92,19 @@ TEST_SUITE("CountSketch Tests") {
         CHECK(result <= 33);
     }
 
+    TEST_CASE("Custom Hash Function - CRC64") {
+        auto custom_hash = std::make_unique<CRC64HashFunction>();
+        CountSketch cs(4, 2048, std::move(custom_hash));
+
+        TwoTuple flow(0x0A0A0A0A, 0xB0B0B0B0);
+
+        cs.update(flow, 40);
+        uint64_t result = cs.query(flow);
+
+        CHECK(result >= 36);
+        CHECK(result <= 44);
+    }
+
     TEST_CASE("Get Parameters") {
         CountSketch cs(4, 2048);
         auto rows = cs.get_rows();

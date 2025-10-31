@@ -43,6 +43,20 @@ TEST_SUITE("CountMin Tests") {
         CHECK(result >= 15);
     }
 
+    TEST_CASE("Custom Hash Function - CRC64") {
+        auto custom_hash = std::make_unique<CRC64HashFunction>();
+        CountMin cm(5, 2048, std::move(custom_hash));
+
+        TwoTuple flow(0x0F0F0F0F, 0xF0F0F0F0);
+
+        for (int i = 0; i < 12; i++) {
+            cm.update(flow, 2);
+        }
+
+        uint64_t result = cm.query(flow);
+        CHECK(result >= 24);
+    }
+
     TEST_CASE("Insert Different Flows") {
         CountMin cm(6, 4096);
 

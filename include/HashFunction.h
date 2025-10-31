@@ -6,6 +6,7 @@
 
 #include "../third_party/MurmurHash3.h"
 #include "../third_party/SpookyV2.h"
+#include "../third_party/crc32.h"
 #include "TwoTuple.h"
 #include "seed_list.h"
 
@@ -75,6 +76,20 @@ class CRC64HashFunction : public HashFunction {
     }
 };
 
-using DefaultHashFunction = CRC64HashFunction;
+/**
+ * @brief 基于 CRC32 的哈希函数实现
+ * 使用 BMv2 CRC32 算法和 seed_list 中的质数作为种子
+ */
+class CRC32HashFunction : public HashFunction {
+   public:
+    uint64_t hash(const TwoTuple& flow,
+                  uint64_t seed,
+                  uint64_t mod) const override;
+    std::unique_ptr<HashFunction> clone() const override {
+        return std::make_unique<CRC32HashFunction>();
+    }
+};
+
+using DefaultHashFunction = CRC32HashFunction;
 
 #endif  // HASH_FUNCTION_H

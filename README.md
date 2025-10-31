@@ -153,6 +153,7 @@ SketchLib/
 
 本项目使用了以下优秀的第三方库：
 
+- **[BMv2 CRC32](https://github.com/p4lang/behavioral-model)** - BMv2 中的 CRC32 实现
 - **[Redis CRC64](https://github.com/redis/redis)** - Redis 5.0 中的 CRC64 实现，采用 Jones 多项式
 - **[MurmurHash3](https://github.com/aappleby/smhasher)** - Austin Appleby 开发的高性能非加密哈希函数
 - **[SpookyHash](http://burtleburtle.net/bob/hash/spooky.html)** - Bob Jenkins 开发的快速哈希函数

@@ -60,3 +60,22 @@ uint64_t CRC64HashFunction::hash(const TwoTuple& flow,
 
     return hash_result % mod;
 }
+
+uint64_t CRC32HashFunction::hash(const TwoTuple& flow,
+                                 uint64_t seed,
+                                 uint64_t mod) const {
+    uint64_t prime_seed = seed_list[seed % SEED_LIST_SIZE];
+
+    // 准备内存
+    struct {
+        uint32_t src_ip;
+        uint32_t dst_ip;
+        uint64_t prime_seed;
+    } input = {flow.src_ip, flow.dst_ip, prime_seed};
+
+    // 使用 BMv2 CRC32 算法计算哈希值
+    uint32_t hash_result =
+        crc32(reinterpret_cast<const unsigned char*>(&input), sizeof(input));
+
+    return static_cast<uint64_t>(hash_result) % mod;
+}
