@@ -22,6 +22,7 @@
 // SketchLib 头文件
 #include "CountMin.h"
 #include "CountSketch.h"
+#include "ElasticSketch.h"
 #include "HashFunction.h"
 #include "SampleAndHold.h"
 #include "TwoTuple.h"
@@ -512,31 +513,187 @@ void example_hash_comparison() {
 
 // ==================== 综合示例 ====================
 
+// ==================== ElasticSketch 示例 ====================
+
+void example_elasticsketch_basic() {
+    print_separator("示例 13: ElasticSketch 基本使用");
+
+    // 创建 ElasticSketch：
+    // - Heavy Part: 2000 字节
+    // - Lambda: 3 (替换阈值)
+    // - 总内存: 8192 字节
+    // - Light Part: 8 行
+    ElasticSketch es(2000, 3, 8192, 8);
+
+    std::cout << "\n创建 ElasticSketch:" << std::endl;
+    std::cout << "  Heavy 桶数: " << es.get_heavy_bucket_count() << std::endl;
+    auto light_size = es.get_light_size();
+    std::cout << "  Light 大小: " << light_size.first << " 行 × "
+              << light_size.second << " 列" << std::endl;
+    std::cout << "  Lambda 值: " << es.get_lambda() << std::endl;
+
+    TwoTuple flow1(ip_to_uint32("192.168.1.1"), ip_to_uint32("10.0.0.1"));
+    TwoTuple flow2(ip_to_uint32("192.168.1.2"), ip_to_uint32("10.0.0.2"));
+
+    es.update(flow1, 100);
+    es.update(flow2, 50);
+
+    std::cout << "\n流 1 计数: " << es.query(flow1) << " (实际: 100)"
+              << std::endl;
+    std::cout << "流 2 计数: " << es.query(flow2) << " (实际: 50)" << std::endl;
+
+    std::cout << "\n特点: Heavy Part 精确记录大流，Light Part 近似记录小流"
+              << std::endl;
+}
+
+void example_elasticsketch_eviction() {
+    print_separator("示例 14: ElasticSketch 投票替换机制");
+
+    // 小的 Heavy Part 来演示替换
+    ElasticSketch es(400, 2, 2048, 8);
+
+    std::cout << "\n创建小容量 ElasticSketch (Heavy 桶数: "
+              << es.get_heavy_bucket_count() << ")" << std::endl;
+
+    TwoTuple heavy_flow(ip_to_uint32("192.168.1.1"), ip_to_uint32("10.0.0.1"));
+    TwoTuple competing_flow(ip_to_uint32("192.168.1.2"),
+                            ip_to_uint32("10.0.0.2"));
+
+    std::cout << "\n步骤 1: 插入重流 (1000 包)" << std::endl;
+    es.update(heavy_flow, 1000);
+    std::cout << "  重流计数: " << es.query(heavy_flow) << std::endl;
+
+    std::cout << "\n步骤 2: 插入竞争流 (尝试触发替换)" << std::endl;
+    for (int i = 0; i < 100; i++) {
+        es.update(competing_flow, 10);
+    }
+
+    uint64_t heavy_count = es.query(heavy_flow);
+    uint64_t competing_count = es.query(competing_flow);
+
+    std::cout << "  重流计数: " << heavy_count << std::endl;
+    std::cout << "  竞争流计数: " << competing_count << std::endl;
+
+    std::cout << "\n说明: 投票机制确保真正的大流占据 Heavy Part" << std::endl;
+}
+
+void example_elasticsketch_heavy_hitter() {
+    print_separator("示例 15: ElasticSketch 重流检测");
+
+    ElasticSketch es(4000, 2, 16384, 8);
+
+    // 模拟流量：5个重流 + 50个轻流
+    std::vector<std::pair<TwoTuple, int>> flows;
+
+    std::cout << "\n模拟流量数据..." << std::endl;
+    std::cout << "  5 个重流 (各 1000 包)" << std::endl;
+    for (int i = 0; i < 5; i++) {
+        TwoTuple flow(ip_to_uint32("192.168.1.1") + i,
+                      ip_to_uint32("10.0.0.1"));
+        flows.push_back({flow, 1000});
+        es.update(flow, 1000);
+    }
+
+    std::cout << "  50 个轻流 (各 20 包)" << std::endl;
+    for (int i = 0; i < 50; i++) {
+        TwoTuple flow(ip_to_uint32("192.168.2.1") + i,
+                      ip_to_uint32("10.0.0.2"));
+        flows.push_back({flow, 20});
+        es.update(flow, 20);
+    }
+
+    // 检测重流（阈值：500）
+    std::cout << "\n检测重流（阈值：500 包）...\n" << std::endl;
+
+    int detected = 0;
+    for (const auto& f : flows) {
+        uint64_t count = es.query(f.first);
+        if (count >= 500) {
+            std::cout << "  检测到重流: " << uint32_to_ip(f.first.src_ip)
+                      << " → " << uint32_to_ip(f.first.dst_ip) << " (" << count
+                      << " 包)" << std::endl;
+            detected++;
+        }
+    }
+
+    std::cout << "\n结果: 检测到 " << detected << "/5 个重流" << std::endl;
+    std::cout << "特点: 自动识别大流，无需预先指定" << std::endl;
+}
+
+void example_elasticsketch_lambda_comparison() {
+    print_separator("示例 16: ElasticSketch Lambda 参数影响");
+
+    // 不同的 lambda 值
+    ElasticSketch es_aggressive(1000, 1, 4096);     // Lambda=1, 激进替换
+    ElasticSketch es_moderate(1000, 3, 4096);       // Lambda=3, 适中
+    ElasticSketch es_conservative(1000, 10, 4096);  // Lambda=10, 保守
+
+    std::cout << "\n配置: 相同内存，不同 Lambda 值" << std::endl;
+    std::cout << "  激进 (λ=1): 容易替换，适应快" << std::endl;
+    std::cout << "  适中 (λ=3): 平衡替换" << std::endl;
+    std::cout << "  保守 (λ=10): 不易替换，稳定" << std::endl;
+
+    // 测试流
+    std::vector<TwoTuple> test_flows;
+    for (int i = 0; i < 20; i++) {
+        test_flows.emplace_back(ip_to_uint32("192.168.1.1") + i * 0x100000,
+                                ip_to_uint32("10.0.0.1"));
+    }
+
+    std::cout << "\n插入 20 个流，各 50 包..." << std::endl;
+    for (const auto& flow : test_flows) {
+        es_aggressive.update(flow, 50);
+        es_moderate.update(flow, 50);
+        es_conservative.update(flow, 50);
+    }
+
+    // 统计准确率
+    int correct_aggressive = 0, correct_moderate = 0, correct_conservative = 0;
+    for (const auto& flow : test_flows) {
+        if (es_aggressive.query(flow) >= 45)
+            correct_aggressive++;
+        if (es_moderate.query(flow) >= 45)
+            correct_moderate++;
+        if (es_conservative.query(flow) >= 45)
+            correct_conservative++;
+    }
+
+    std::cout << "\n准确率（允许 10% 误差）:" << std::endl;
+    std::cout << "  激进 (λ=1): " << correct_aggressive << "/20 ("
+              << (100.0 * correct_aggressive / 20) << "%)" << std::endl;
+    std::cout << "  适中 (λ=3): " << correct_moderate << "/20 ("
+              << (100.0 * correct_moderate / 20) << "%)" << std::endl;
+    std::cout << "  保守 (λ=10): " << correct_conservative << "/20 ("
+              << (100.0 * correct_conservative / 20) << "%)" << std::endl;
+
+    std::cout << "\n结论: Lambda 值越大，越稳定但适应性越差" << std::endl;
+}
+
 void example_real_world_scenario() {
-    print_separator("示例 13: 实际应用场景 - 网络流量监控");
+    print_separator("示例 17: 实际应用场景 - 网络流量监控");
 
     std::cout << "\n场景: 监控网络流量，检测 DDoS 攻击" << std::endl;
-    std::cout << "策略: 使用 UnivMon + Sample-and-Hold 后端\n" << std::endl;
+    std::cout << "策略: 使用 ElasticSketch 自适应检测异常流量\n" << std::endl;
 
-    // 创建 UnivMon
-    UnivMon um(5, 32768, nullptr, UnivMonBackend::SaH);
+    // 创建 ElasticSketch
+    ElasticSketch es(8000, 2, 32768, 8);
 
     // 模拟正常流量（分散）
     std::cout << "1. 添加正常流量..." << std::endl;
     for (int i = 0; i < 100; i++) {
         TwoTuple flow(ip_to_uint32("192.168.1.1") + i,
                       ip_to_uint32("10.0.0.1"));
-        um.update(flow, 10);  // 每个流 10 个包
+        es.update(flow, 10);  // 每个流 10 个包
     }
 
     // 模拟 DDoS 攻击（单个 IP 发送大量请求）
     std::cout << "2. 检测到异常流量..." << std::endl;
     TwoTuple attacker(ip_to_uint32("203.0.113.1"), ip_to_uint32("10.0.0.1"));
-    um.update(attacker, 10000);  // 攻击者发送 10000 个包
+    es.update(attacker, 10000);  // 攻击者发送 10000 个包
 
     // 查询并检测
     std::cout << "\n3. 分析结果:" << std::endl;
-    uint64_t attacker_count = um.query(attacker);
+    uint64_t attacker_count = es.query(attacker);
 
     if (attacker_count > 1000) {
         std::cout << "  ⚠️  检测到 DDoS 攻击！" << std::endl;
@@ -546,6 +703,9 @@ void example_real_world_scenario() {
     } else {
         std::cout << "  ✓ 流量正常" << std::endl;
     }
+
+    std::cout << "\n优势: ElasticSketch 自动将攻击者置于 Heavy Part，"
+              << "提供精确计数" << std::endl;
 }
 
 // ==================== 主函数 ====================
@@ -567,6 +727,8 @@ int main() {
     std::cout << "║  - Sample-and-Hold      (精确追踪)                         "
                  "       ║\n";
     std::cout << "║  - UnivMon              (多分辨率监控)                     "
+                 "        ║\n";
+    std::cout << "║  - ElasticSketch        (自适应大流识别)                   "
                  "        ║\n";
     std::cout << "║  - 自定义哈希函数       (依赖注入)                         "
                  "        ║\n";
@@ -591,6 +753,12 @@ int main() {
         example_univmon_basic();
         example_univmon_multi_scale();
         example_univmon_backend_comparison();
+
+        // ElasticSketch 示例
+        example_elasticsketch_basic();
+        example_elasticsketch_eviction();
+        example_elasticsketch_heavy_hitter();
+        example_elasticsketch_lambda_comparison();
 
         // 自定义哈希函数示例
         example_custom_hash();

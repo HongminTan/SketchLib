@@ -39,7 +39,7 @@ class CountMin : public Sketch {
         return counter_matrix;
     }
 
-    inline void clear() {
+    inline void clear() override {
         for (auto& row : counter_matrix) {
             std::fill(row.begin(), row.end(), 0);
         }
