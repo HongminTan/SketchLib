@@ -23,6 +23,7 @@ class SampleAndHold : public Sketch {
     CounterMap::iterator find_min();
 
     CounterMap counters;
+
     // 最多精确记录的流数
     uint64_t capacity;
 

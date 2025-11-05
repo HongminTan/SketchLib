@@ -33,8 +33,7 @@ HeavyPart& HeavyPart::operator=(const HeavyPart& other) {
 }
 
 uint64_t HeavyPart::update(TwoTuple& flow) {
-    // seed 是 第 104 个质数
-    uint64_t index = hash_function->hash(flow, 104, bucket_count);
+    uint64_t index = hash_function->hash(flow, HEAVY_PART_SEED, bucket_count);
 
     // 桶为空，直接插入
     if (buckets[index].empty()) {
@@ -78,12 +77,12 @@ uint64_t HeavyPart::update(TwoTuple& flow) {
 }
 
 uint64_t HeavyPart::query(const TwoTuple& flow, bool& flag) const {
-    uint64_t pos = hash_function->hash(flow, 104, bucket_count);
+    uint64_t index = hash_function->hash(flow, HEAVY_PART_SEED, bucket_count);
 
-    flag = buckets[pos].flag;
+    flag = buckets[index].flag;
 
-    if (buckets[pos].flow_id == flow) {
-        return buckets[pos].pos_vote;
+    if (buckets[index].flow_id == flow) {
+        return buckets[index].pos_vote;
     }
 
     return 0;

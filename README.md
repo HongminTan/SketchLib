@@ -19,6 +19,9 @@ UnivMon 是多分辨率监控框架，使用分层采样（每层采样概率递
 ### ElasticSketch
 ElasticSketch 采用双层架构：Heavy Part 使用投票机制精确记录大流，Light Part 使用 Count-Min Sketch 近似记录小流。自适应识别流应当在Heavy Part 还是 Light Part 并从Heavy Part 驱逐小流到 Light Part。
 
+### HashPipe
+HashPipe 使用多级流水线结构，大流会沉淀在某一级并精确记录，小流逐级推进最终被过滤。适合只关心大流、不在乎小流的场景。
+
 ## 🔧 构建说明
 
 ### 前置要求
@@ -119,6 +122,7 @@ SketchLib/
 │   ├── SampleAndHold.h         # Sample-and-Hold
 │   ├── UnivMon.h               # UnivMon
 │   ├── ElasticSketch.h         # ElasticSketch
+│   ├── HashPipe.h              # HashPipe
 │   └── seed_list.h             # 哈希种子列表
 │
 ├── src/                        # 源文件实现
@@ -127,6 +131,7 @@ SketchLib/
 │   ├── SampleAndHold.cpp
 │   ├── UnivMon.cpp
 │   ├── ElasticSketch.cpp
+│   ├── HashPipe.cpp
 │   ├── HashFunction.cpp
 │   └── seed_list.cpp
 │
@@ -143,7 +148,8 @@ SketchLib/
 │   ├── test_countsketch.cpp    # Count Sketch 测试
 │   ├── test_sampleandhold.cpp  # Sample-and-Hold 测试
 │   ├── test_univmon.cpp        # UnivMon 测试
-│   └── test_elasticsketch.cpp  # ElasticSketch 测试
+│   ├── test_elasticsketch.cpp  # ElasticSketch 测试
+│   └── test_hashpipe.cpp       # HashPipe 测试
 │
 ├── examples/                   # 示例代码
 │   ├── CMakeLists.txt

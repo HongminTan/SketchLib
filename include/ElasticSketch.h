@@ -10,6 +10,9 @@
 // TwoTuple(8字节) + posvote(4字节) + negvote(4字节) + flag(1字节) + padding
 constexpr uint64_t HEAVY_BUCKET_SIZE = 20;
 
+// Heavy Part 的哈希种子是第 104 个质数
+constexpr uint64_t HEAVY_PART_SEED = 104;
+
 /**
  * @brief Heavy Part 的桶结构
  *
