@@ -22,6 +22,12 @@ ElasticSketch 采用双层架构：Heavy Part 使用投票机制精确记录大�
 ### HashPipe
 HashPipe 使用多级流水线结构，大流会沉淀在某一级并精确记录，小流逐级推进最终被过滤。适合只关心大流、不在乎小流的场景。
 
+### BloomFilter
+BloomFilter 布隆过滤器用于快速判断元素是否存在，具有空间效率高的特点。可能有假阳性但无假阴性。
+
+### FlowRadar
+FlowRadar 基于 XOR 编码和迭代解码，可以恢复所有流及其精确频率。适合需要完整流信息的离线分析场景。
+
 ## 🔧 构建说明
 
 ### 前置要求
@@ -123,6 +129,8 @@ SketchLib/
 │   ├── UnivMon.h               # UnivMon
 │   ├── ElasticSketch.h         # ElasticSketch
 │   ├── HashPipe.h              # HashPipe
+│   ├── BloomFilter.h           # BloomFilter
+│   ├── FlowRadar.h             # FlowRadar
 │   └── seed_list.h             # 哈希种子列表
 │
 ├── src/                        # 源文件实现
@@ -132,6 +140,8 @@ SketchLib/
 │   ├── UnivMon.cpp
 │   ├── ElasticSketch.cpp
 │   ├── HashPipe.cpp
+│   ├── BloomFilter.cpp
+│   ├── FlowRadar.cpp
 │   ├── HashFunction.cpp
 │   └── seed_list.cpp
 │
@@ -149,7 +159,9 @@ SketchLib/
 │   ├── test_sampleandhold.cpp  # Sample-and-Hold 测试
 │   ├── test_univmon.cpp        # UnivMon 测试
 │   ├── test_elasticsketch.cpp  # ElasticSketch 测试
-│   └── test_hashpipe.cpp       # HashPipe 测试
+│   ├── test_hashpipe.cpp       # HashPipe 测试
+│   ├── test_bloomfilter.cpp    # BloomFilter 测试
+│   └── test_flowradar.cpp      # FlowRadar 测试
 │
 ├── examples/                   # 示例代码
 │   ├── CMakeLists.txt

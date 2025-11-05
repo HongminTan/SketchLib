@@ -37,7 +37,7 @@ HashPipe& HashPipe::operator=(const HashPipe& other) {
 }
 
 void HashPipe::update(const TwoTuple& flow, int increment) {
-    // HashPipe 设计为逐包处理
+    // HashPipe 应为逐包处理
     for (int inc = 0; inc < increment; inc++) {
         // stage 0 处理
         uint64_t index = hash_function->hash(flow, 0, buckets_per_stage);
