@@ -28,6 +28,9 @@ BloomFilter 布隆过滤器用于快速判断元素是否存在，具有空间�
 ### FlowRadar
 FlowRadar 基于 XOR 编码和迭代解码，可以恢复所有流及其精确频率。适合需要完整流信息的离线分析场景。
 
+### SketchLearn
+SketchLearn 基于位级分层和概率推断，使用多层 Count-Min Sketch 记录不同位模式的流量。通过统计学习主动发现大流。
+
 ## 🔧 构建说明
 
 ### 前置要求
@@ -131,6 +134,7 @@ SketchLib/
 │   ├── HashPipe.h              # HashPipe
 │   ├── BloomFilter.h           # BloomFilter
 │   ├── FlowRadar.h             # FlowRadar
+│   ├── SketchLearn.h           # SketchLearn
 │   └── seed_list.h             # 哈希种子列表
 │
 ├── src/                        # 源文件实现
@@ -142,6 +146,7 @@ SketchLib/
 │   ├── HashPipe.cpp
 │   ├── BloomFilter.cpp
 │   ├── FlowRadar.cpp
+│   ├── SketchLearn.cpp
 │   ├── HashFunction.cpp
 │   └── seed_list.cpp
 │
@@ -161,7 +166,8 @@ SketchLib/
 │   ├── test_elasticsketch.cpp  # ElasticSketch 测试
 │   ├── test_hashpipe.cpp       # HashPipe 测试
 │   ├── test_bloomfilter.cpp    # BloomFilter 测试
-│   └── test_flowradar.cpp      # FlowRadar 测试
+│   ├── test_flowradar.cpp      # FlowRadar 测试
+│   └── test_sketchlearn.cpp    # SketchLearn 测试
 │
 ├── examples/                   # 示例代码
 │   ├── CMakeLists.txt
