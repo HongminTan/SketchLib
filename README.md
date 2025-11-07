@@ -1,6 +1,6 @@
-# SketchLib - 流式数据草图算法库
+# SketchLib
 
-SketchLib 是一个 C++ 流式数据草图算法库，用于网络流量监控和频率估计。
+SketchLib 是一个 C++ 流式数据 Sketch 算法库，可用于网络流量监控和频率估计。
 
 ## 📚 Sketch 算法
 
@@ -36,12 +36,11 @@ SketchLearn 基于位级分层和概率推断，使用多层 Count-Min Sketch �
 ### 前置要求
 - CMake 3.16+
 - C++14 编译器（GCC 5+, Clang 3.4+, MSVC 2015+）
-- （可选）Ninja 构建系统
+- Ninja 构建系统
 
 ### 使用 CMake + Ninja 构建
 
-#### Windows (PowerShell)
-```powershell
+```shell
 # 创建并进入构建目录
 mkdir build
 cd build
@@ -59,43 +58,6 @@ ninja
 .\examples\example.exe
 ```
 
-#### Linux / macOS
-```bash
-# 创建并进入构建目录
-mkdir build
-cd build
-
-# 使用 Ninja 生成构建文件
-cmake -G Ninja ..
-
-# 构建项目
-ninja
-
-# 运行测试
-./tests/sketch_tests
-
-# 运行示例
-./examples/example
-```
-
-### 使用 CMake + Make 构建（不使用 Ninja）
-
-#### Windows
-```powershell
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
-#### Linux / macOS
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
-
 ### CMake 构建选项
 
 ```bash
@@ -108,10 +70,10 @@ cmake -DBUILD_TESTS=OFF ..
 # 指定编译器
 cmake -DCMAKE_CXX_COMPILER=g++ ..
 
-# Release 模式（优化编译）
+# Release 模式
 cmake -DCMAKE_BUILD_TYPE=Release ..
 
-# Debug 模式（调试信息）
+# Debug 模式
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
