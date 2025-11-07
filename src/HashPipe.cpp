@@ -79,10 +79,9 @@ void HashPipe::update(const TwoTuple& flow, int increment) {
                     // 当前流计数更大，替换并继续推进 stage
                     std::swap(evicted_flow, stages[stage][idx].flow_id);
                     std::swap(evicted_count, stages[stage][idx].count);
-                    // 继续到下一级
                 } else {
-                    // 当前流计数较小，被过滤掉
-                    break;
+                    // 当前流计数较小，不替换，进入下一级
+                    continue;
                 }
             }
         }
@@ -91,14 +90,15 @@ void HashPipe::update(const TwoTuple& flow, int increment) {
 
 uint64_t HashPipe::query(const TwoTuple& flow) {
     // 在所有 stage 中查找该流
+    uint64_t count = 0;
     for (uint64_t stage = 0; stage < num_stages; stage++) {
         uint64_t index = hash_function->hash(flow, stage, buckets_per_stage);
 
         if (stages[stage][index].flow_id == flow) {
-            return stages[stage][index].count;
+            count += stages[stage][index].count;
         }
     }
 
     // 找不到返回 0
-    return 0;
+    return count;
 }
