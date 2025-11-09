@@ -2,11 +2,12 @@
 
 #include <vector>
 
+#include "FlowKey.h"
 #include "Ideal.h"
 
 TEST_SUITE("Ideal Tests") {
     TEST_CASE("Basic Update and Query") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -17,7 +18,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Multiple Updates Same Flow") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow(0x11111111, 0x22222222);
 
@@ -30,7 +31,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Insert Different Flows") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         std::vector<std::pair<uint32_t, uint32_t>> flows = {
             {0xAAAAAAAA, 0xBBBBBBBB},
@@ -54,7 +55,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Stress Test") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow(0x99999999, 0x88888888);
 
@@ -66,7 +67,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Query Non-Existent Flows") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow(0x00000000, 0x00000001);
         uint64_t result = ideal.query(flow);
@@ -77,7 +78,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Clear") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -95,7 +96,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Incremental Updates") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow(0xABCDEF00, 0x12345678);
 
@@ -110,7 +111,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Many Different Flows") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         const int num_flows = 1000;
         for (int i = 0; i < num_flows; i++) {
@@ -127,7 +128,7 @@ TEST_SUITE("Ideal Tests") {
     }
 
     TEST_CASE("Exact Accuracy") {
-        Ideal ideal;
+        Ideal<TwoTuple> ideal;
 
         TwoTuple flow1(0x12345678, 0x87654321);
         TwoTuple flow2(0x11111111, 0x22222222);
@@ -144,6 +145,26 @@ TEST_SUITE("Ideal Tests") {
 
         TwoTuple non_existent(0xFFFFFFFF, 0xFFFFFFFF);
         CHECK(ideal.query(non_existent) == 0);
+    }
+
+    TEST_CASE("OneTuple Support") {
+        Ideal<OneTuple> ideal;
+        OneTuple flow(0x12345678);
+
+        ideal.update(flow, 50);
+        uint64_t result = ideal.query(flow);
+
+        CHECK(result == 50);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        Ideal<FiveTuple> ideal;
+        FiveTuple flow(0xAABBCCDD, 0x11223344, 80, 443, 6);
+
+        ideal.update(flow, 75);
+        uint64_t result = ideal.query(flow);
+
+        CHECK(result == 75);
     }
 
 }  // TEST_SUITE

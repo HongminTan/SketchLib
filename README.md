@@ -52,10 +52,16 @@ cmake -G Ninja ..
 ninja
 
 # 运行测试
-.\tests\sketch_tests.exe
+./tests/sketch_tests
 
 # 运行示例
-.\examples\example.exe
+./examples/example_countmin
+./examples/example_countsketch
+./examples/example_elasticsketch
+./examples/example_hashpipe
+./examples/example_univmon
+./examples/example_sketchlearn
+./examples/example_flowradar
 ```
 
 ### CMake 构建选项
@@ -86,7 +92,7 @@ SketchLib/
 │
 ├── include/                    # 公共头文件
 │   ├── Sketch.h                # Sketch 基类
-│   ├── TwoTuple.h              # 流标识符
+│   ├── FlowKey.h               # 流标识符（OneTuple/TwoTuple/FiveTuple）
 │   ├── HashFunction.h          # 哈希函数接口
 │   ├── CountMin.h              # Count-Min Sketch
 │   ├── CountSketch.h           # Count Sketch
@@ -133,12 +139,26 @@ SketchLib/
 │
 ├── examples/                   # 示例代码
 │   ├── CMakeLists.txt
-│   └── example.cpp             # 综合示例
+│   ├── README.md               # 示例使用文档
+│   ├── example_countmin.cpp    # Count-Min 示例
+│   ├── example_countsketch.cpp # Count Sketch 示例
+│   ├── example_elasticsketch.cpp # ElasticSketch 示例
+│   ├── example_hashpipe.cpp    # HashPipe 示例
+│   ├── example_univmon.cpp     # UnivMon 示例
+│   ├── example_sketchlearn.cpp # SketchLearn 示例
+│   └── example_flowradar.cpp   # FlowRadar 示例
 │
 └── build/                      # 构建输出（生成）
     ├── libSketchLib.a          # 静态库
     ├── tests/sketch_tests      # 测试程序
-    └── examples/example        # 示例程序
+    └── examples/               # 示例程序目录
+        ├── example_countmin
+        ├── example_countsketch
+        ├── example_elasticsketch
+        ├── example_hashpipe
+        ├── example_univmon
+        ├── example_sketchlearn
+        └── example_flowradar
 ```
 
 ## 🙏 致谢

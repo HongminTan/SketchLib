@@ -1,38 +1,47 @@
 #include "ElasticSketch.h"
 
-HeavyPart::HeavyPart(uint64_t bucket_count,
-                     uint64_t lambda,
-                     std::unique_ptr<HashFunction> hash_function)
+template <typename FlowKeyType>
+HeavyPart<FlowKeyType>::HeavyPart(
+    uint64_t bucket_count,
+    uint64_t lambda,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function)
     : lambda(lambda),
       bucket_count(bucket_count),
       buckets(bucket_count),
       hash_function(std::move(hash_function)) {
     if (!this->hash_function) {
-        this->hash_function = std::make_unique<DefaultHashFunction>();
+        this->hash_function =
+            std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
 }
 
-HeavyPart::HeavyPart(const HeavyPart& other)
+template <typename FlowKeyType>
+HeavyPart<FlowKeyType>::HeavyPart(const HeavyPart& other)
     : lambda(other.lambda),
       bucket_count(other.bucket_count),
       buckets(other.buckets),
-      hash_function(other.hash_function
-                        ? other.hash_function->clone()
-                        : std::make_unique<DefaultHashFunction>()) {}
+      hash_function(
+          other.hash_function
+              ? other.hash_function->clone()
+              : std::make_unique<DefaultHashFunction<FlowKeyType>>()) {}
 
-HeavyPart& HeavyPart::operator=(const HeavyPart& other) {
+template <typename FlowKeyType>
+HeavyPart<FlowKeyType>& HeavyPart<FlowKeyType>::operator=(
+    const HeavyPart& other) {
     if (this != &other) {
         lambda = other.lambda;
         bucket_count = other.bucket_count;
         buckets = other.buckets;
-        hash_function = other.hash_function
-                            ? other.hash_function->clone()
-                            : std::make_unique<DefaultHashFunction>();
+        hash_function =
+            other.hash_function
+                ? other.hash_function->clone()
+                : std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
     return *this;
 }
 
-uint64_t HeavyPart::update(TwoTuple& flow) {
+template <typename FlowKeyType>
+uint64_t HeavyPart<FlowKeyType>::update(FlowKeyType& flow) {
     uint64_t index = hash_function->hash(flow, HEAVY_PART_SEED, bucket_count);
 
     // 桶为空，直接插入
@@ -76,7 +85,9 @@ uint64_t HeavyPart::update(TwoTuple& flow) {
     }
 }
 
-uint64_t HeavyPart::query(const TwoTuple& flow, bool& flag) const {
+template <typename FlowKeyType>
+uint64_t HeavyPart<FlowKeyType>::query(const FlowKeyType& flow,
+                                       bool& flag) const {
     uint64_t index = hash_function->hash(flow, HEAVY_PART_SEED, bucket_count);
 
     flag = buckets[index].flag;
@@ -88,55 +99,65 @@ uint64_t HeavyPart::query(const TwoTuple& flow, bool& flag) const {
     return 0;
 }
 
-ElasticSketch::ElasticSketch(uint64_t heavy_memory,
-                             uint64_t lambda,
-                             uint64_t total_memory,
-                             uint64_t light_rows,
-                             std::unique_ptr<HashFunction> hash_function)
+template <typename FlowKeyType, typename SFINAE>
+ElasticSketch<FlowKeyType, SFINAE>::ElasticSketch(
+    uint64_t heavy_memory,
+    uint64_t lambda,
+    uint64_t total_memory,
+    uint64_t light_rows,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function)
     : heavy_memory(heavy_memory), lambda(lambda) {
     // 计算 Heavy Part 的桶数量
-    uint64_t heavy_bucket_count = heavy_memory / HEAVY_BUCKET_SIZE;
+    uint64_t heavy_bucket_count =
+        heavy_memory / sizeof(HeavyBucket<FlowKeyType>);
 
-    std::unique_ptr<HashFunction> heavy_hash;
-    std::unique_ptr<HashFunction> light_hash;
+    std::unique_ptr<HashFunction<FlowKeyType>> heavy_hash;
+    std::unique_ptr<HashFunction<FlowKeyType>> light_hash;
     if (hash_function) {
         heavy_hash = hash_function->clone();
         light_hash = hash_function->clone();
     } else {
-        heavy_hash = std::make_unique<DefaultHashFunction>();
-        light_hash = std::make_unique<DefaultHashFunction>();
+        heavy_hash = std::make_unique<DefaultHashFunction<FlowKeyType>>();
+        light_hash = std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
 
-    heavy_part = std::make_unique<HeavyPart>(heavy_bucket_count, lambda,
-                                             std::move(heavy_hash));
+    heavy_part = std::make_unique<HeavyPart<FlowKeyType>>(
+        heavy_bucket_count, lambda, std::move(heavy_hash));
 
     // 计算 Light Part 的内存
     uint64_t light_memory = total_memory - heavy_memory;
-    light_part = std::make_unique<LightPart>(light_rows, light_memory,
-                                             std::move(light_hash));
+    light_part = std::make_unique<LightPart<FlowKeyType>>(
+        light_rows, light_memory, std::move(light_hash));
 }
 
-ElasticSketch::ElasticSketch(const ElasticSketch& other)
+template <typename FlowKeyType, typename SFINAE>
+ElasticSketch<FlowKeyType, SFINAE>::ElasticSketch(const ElasticSketch& other)
     : heavy_memory(other.heavy_memory), lambda(other.lambda) {
-    heavy_part = std::make_unique<HeavyPart>(*other.heavy_part);
-    light_part = std::make_unique<LightPart>(*other.light_part);
+    heavy_part = std::make_unique<HeavyPart<FlowKeyType>>(*other.heavy_part);
+    light_part = std::make_unique<LightPart<FlowKeyType>>(*other.light_part);
 }
 
-ElasticSketch& ElasticSketch::operator=(const ElasticSketch& other) {
+template <typename FlowKeyType, typename SFINAE>
+ElasticSketch<FlowKeyType, SFINAE>&
+ElasticSketch<FlowKeyType, SFINAE>::operator=(const ElasticSketch& other) {
     if (this != &other) {
         heavy_memory = other.heavy_memory;
         lambda = other.lambda;
-        heavy_part = std::make_unique<HeavyPart>(*other.heavy_part);
-        light_part = std::make_unique<LightPart>(*other.light_part);
+        heavy_part =
+            std::make_unique<HeavyPart<FlowKeyType>>(*other.heavy_part);
+        light_part =
+            std::make_unique<LightPart<FlowKeyType>>(*other.light_part);
     }
     return *this;
 }
 
-void ElasticSketch::update(const TwoTuple& flow, int increment) {
+template <typename FlowKeyType, typename SFINAE>
+void ElasticSketch<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                                int increment) {
     // ElasticSketch 应逐包处理
     for (int i = 0; i < increment; i++) {
         // heavy_part 会将被踢出的流放到 flow_ 中
-        TwoTuple flow_ = flow;
+        FlowKeyType flow_ = flow;
         uint64_t evicted_count = heavy_part->update(flow_);
 
         // flow_ 是需要被存到 Light Part 的流
@@ -149,7 +170,8 @@ void ElasticSketch::update(const TwoTuple& flow, int increment) {
     }
 }
 
-uint64_t ElasticSketch::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t ElasticSketch<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     bool flag = false;
     uint64_t heavy_count = heavy_part->query(flow, flag);
 
@@ -161,3 +183,13 @@ uint64_t ElasticSketch::query(const TwoTuple& flow) {
 
     return heavy_count;
 }
+
+// HeavyPart
+template class HeavyPart<OneTuple>;
+template class HeavyPart<TwoTuple>;
+template class HeavyPart<FiveTuple>;
+
+// ElasticSketch
+template class ElasticSketch<OneTuple>;
+template class ElasticSketch<TwoTuple>;
+template class ElasticSketch<FiveTuple>;

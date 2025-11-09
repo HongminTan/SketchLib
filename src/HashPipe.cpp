@@ -1,42 +1,53 @@
 #include "HashPipe.h"
 
-HashPipe::HashPipe(uint64_t total_memory,
-                   uint64_t num_stages,
-                   std::unique_ptr<HashFunction> hash_function)
+template <typename FlowKeyType, typename SFINAE>
+HashPipe<FlowKeyType, SFINAE>::HashPipe(
+    uint64_t total_memory,
+    uint64_t num_stages,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function)
     : num_stages(num_stages), hash_function(std::move(hash_function)) {
     if (!this->hash_function) {
-        this->hash_function = std::make_unique<DefaultHashFunction>();
+        this->hash_function =
+            std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
 
     // 计算每个 stage 的桶数
-    buckets_per_stage = total_memory / num_stages / HPBUCKET_SIZE;
+    uint64_t bucket_size = sizeof(HPBucket<FlowKeyType>);
+    buckets_per_stage = total_memory / num_stages / bucket_size;
 
     // 初始化多级哈希表
-    stages = std::vector<std::vector<HPBucket>>(
-        num_stages, std::vector<HPBucket>(buckets_per_stage));
+    stages = std::vector<std::vector<HPBucket<FlowKeyType>>>(
+        num_stages, std::vector<HPBucket<FlowKeyType>>(buckets_per_stage));
 }
 
-HashPipe::HashPipe(const HashPipe& other)
+template <typename FlowKeyType, typename SFINAE>
+HashPipe<FlowKeyType, SFINAE>::HashPipe(const HashPipe& other)
     : num_stages(other.num_stages),
       buckets_per_stage(other.buckets_per_stage),
       stages(other.stages),
-      hash_function(other.hash_function
-                        ? other.hash_function->clone()
-                        : std::make_unique<DefaultHashFunction>()) {}
+      hash_function(
+          other.hash_function
+              ? other.hash_function->clone()
+              : std::make_unique<DefaultHashFunction<FlowKeyType>>()) {}
 
-HashPipe& HashPipe::operator=(const HashPipe& other) {
+template <typename FlowKeyType, typename SFINAE>
+HashPipe<FlowKeyType, SFINAE>& HashPipe<FlowKeyType, SFINAE>::operator=(
+    const HashPipe& other) {
     if (this != &other) {
         num_stages = other.num_stages;
         buckets_per_stage = other.buckets_per_stage;
         stages = other.stages;
-        hash_function = other.hash_function
-                            ? other.hash_function->clone()
-                            : std::make_unique<DefaultHashFunction>();
+        hash_function =
+            other.hash_function
+                ? other.hash_function->clone()
+                : std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
     return *this;
 }
 
-void HashPipe::update(const TwoTuple& flow, int increment) {
+template <typename FlowKeyType, typename SFINAE>
+void HashPipe<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                           int increment) {
     // HashPipe 应为逐包处理
     for (int inc = 0; inc < increment; inc++) {
         // stage 0 处理
@@ -51,7 +62,7 @@ void HashPipe::update(const TwoTuple& flow, int increment) {
             stages[0][index].count = 1;
         } else {
             // 冲突：将旧流踢到后续 stage ，新流占据 stage 0
-            TwoTuple evicted_flow = stages[0][index].flow_id;
+            FlowKeyType evicted_flow = stages[0][index].flow_id;
             uint32_t evicted_count = stages[0][index].count;
 
             stages[0][index].flow_id = flow;
@@ -88,7 +99,8 @@ void HashPipe::update(const TwoTuple& flow, int increment) {
     }
 }
 
-uint64_t HashPipe::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t HashPipe<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     // 在所有 stage 中查找该流
     uint64_t count = 0;
     for (uint64_t stage = 0; stage < num_stages; stage++) {
@@ -102,3 +114,7 @@ uint64_t HashPipe::query(const TwoTuple& flow) {
     // 找不到返回 0
     return count;
 }
+
+template class HashPipe<OneTuple>;
+template class HashPipe<TwoTuple>;
+template class HashPipe<FiveTuple>;

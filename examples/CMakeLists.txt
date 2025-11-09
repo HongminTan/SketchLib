@@ -30,7 +30,7 @@
 # 使用方法
 # ============================================================================
 #
-# 1. 确保 SketchLib 已经编译完成（生成了 libSketchLib.a 或 SketchLib.lib）
+# 1. 确保 SketchLib 已经编译完成
 #
 # 2. 配置并编译示例：
 #    cd build
@@ -43,82 +43,57 @@
 #
 # ============================================================================
 
+# ============================================================================
 # 创建示例可执行文件
-add_executable(example example.cpp)
-
-# ============================================================================
-# 链接 SketchLib 库
-# ============================================================================
-#
-# 方式1：使用库目标名称（推荐，如果 SketchLib 在同一个 CMake 项目中）
-target_link_libraries(example PRIVATE SketchLib)
-#
-# 方式2：使用库文件路径（如果 SketchLib 是外部编译好的库）
-# target_link_libraries(example PRIVATE
-#     ${CMAKE_SOURCE_DIR}/build/libSketchLib.a  # Linux/macOS
-#     # 或
-#     ${CMAKE_SOURCE_DIR}/build/SketchLib.lib   # Windows MSVC
-# )
-#
 # ============================================================================
 
-# ============================================================================
-# 包含头文件目录
-# ============================================================================
-#
-# 方式1：使用 CMAKE_SOURCE_DIR（推荐）
-target_include_directories(example PRIVATE
-    ${CMAKE_SOURCE_DIR}/include      # SketchLib 头文件
-    ${CMAKE_SOURCE_DIR}/third_party  # 第三方库头文件
+# 定义所有示例程序
+set(EXAMPLE_SOURCES
+    example_countmin.cpp        # cm
+    example_countsketch.cpp     # cs
+    example_elasticsketch.cpp   # es
+    example_hashpipe.cpp        # hp
+    example_univmon.cpp         # um
+    example_sketchlearn.cpp     # sl
+    example_flowradar.cpp       # fr
 )
-#
-# 方式2：使用相对路径
-# target_include_directories(example PRIVATE
-#     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-#     ${CMAKE_CURRENT_SOURCE_DIR}/../third_party
-# )
-#
-# 方式3：使用绝对路径（如果 SketchLib 在固定位置）
-# target_include_directories(example PRIVATE
-#     /absolute/path/to/SketchLib/include
-#     /absolute/path/to/SketchLib/third_party
-# )
-#
-# ============================================================================
 
-# ============================================================================
-# 编译器特定设置
-# ============================================================================
-
-if(WIN32)
-    # Windows 平台设置
-    target_compile_definitions(example PRIVATE WIN32_LEAN_AND_MEAN)
-
-    # 如果使用 MSVC 编译器
-    if(MSVC)
-        target_compile_options(example PRIVATE /W3)
+# 为每个示例创建可执行文件
+foreach(EXAMPLE_SRC ${EXAMPLE_SOURCES})
+    # 获取文件名
+    get_filename_component(EXAMPLE_NAME ${EXAMPLE_SRC} NAME_WE)
+    
+    # 创建可执行文件
+    add_executable(${EXAMPLE_NAME} ${EXAMPLE_SRC})
+    
+    # 链接 SketchLib 库
+    target_link_libraries(${EXAMPLE_NAME} PRIVATE SketchLib)
+    
+    # 包含头文件目录
+    target_include_directories(${EXAMPLE_NAME} PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/third_party
+    )
+    
+    # 编译器设置
+    if(WIN32)
+        target_compile_definitions(${EXAMPLE_NAME} PRIVATE WIN32_LEAN_AND_MEAN)
+        if(MSVC)
+            target_compile_options(${EXAMPLE_NAME} PRIVATE /W3)
+        endif()
+        if(MINGW)
+            target_compile_options(${EXAMPLE_NAME} PRIVATE -Wall -Wextra)
+        endif()
+    else()
+        target_compile_options(${EXAMPLE_NAME} PRIVATE -Wall -Wextra -O2)
     endif()
-
-    # 如果使用 MinGW
-    if(MINGW)
-        target_compile_options(example PRIVATE -Wall -Wextra)
-    endif()
-else()
-    # Linux/macOS 平台设置
-    target_compile_options(example PRIVATE -Wall -Wextra -O2)
-endif()
+    
+    # 安装规则
+    install(TARGETS ${EXAMPLE_NAME} DESTINATION bin/examples)
+endforeach()
 
 # ============================================================================
-# 安装规则（可选）
-# ============================================================================
-#
-# 将示例程序安装到指定目录
-install(TARGETS example DESTINATION bin/examples)
-#
-# ============================================================================
-
-# ============================================================================
-# 调试信息（可选，用于检查路径是否正确）
+# 调试信息
 # ============================================================================
 #
 # 取消下面的注释来查看路径信息

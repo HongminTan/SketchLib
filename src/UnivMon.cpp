@@ -1,9 +1,11 @@
-﻿#include "UnivMon.h"
+#include "UnivMon.h"
 
-UnivMon::UnivMon(uint64_t num_layers_value,
-                 uint64_t total_memory_bytes_value,
-                 std::unique_ptr<HashFunction> hash_function_value,
-                 UnivMonBackend backend_value)
+template <typename FlowKeyType, typename SFINAE>
+UnivMon<FlowKeyType, SFINAE>::UnivMon(
+    uint64_t num_layers_value,
+    uint64_t total_memory_bytes_value,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function_value,
+    UnivMonBackend backend_value)
     : num_layers(num_layers_value > 0 ? num_layers_value : 1),
       total_memory_bytes(total_memory_bytes_value > 0 ? total_memory_bytes_value
                                                       : 1),
@@ -12,7 +14,7 @@ UnivMon::UnivMon(uint64_t num_layers_value,
       layers(),
       rng(std::random_device{}()) {
     if (!hash_function) {
-        hash_function = std::make_unique<DefaultHashFunction>();
+        hash_function = std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
     if (total_memory_bytes < num_layers) {
         total_memory_bytes = num_layers;
@@ -20,22 +22,27 @@ UnivMon::UnivMon(uint64_t num_layers_value,
     initialize_layers();
 }
 
-UnivMon::UnivMon(const UnivMon& other)
+template <typename FlowKeyType, typename SFINAE>
+UnivMon<FlowKeyType, SFINAE>::UnivMon(const UnivMon& other)
     : num_layers(other.num_layers),
       total_memory_bytes(other.total_memory_bytes),
       backend(other.backend),
       hash_function(other.hash_function
                         ? other.hash_function->clone()
-                        : std::make_unique<DefaultHashFunction>()),
+                        : std::make_unique<DefaultHashFunction<FlowKeyType>>()),
       layers(),
       rng(std::random_device{}()) {
     layers.reserve(static_cast<std::size_t>(num_layers));
     for (const auto& layer : other.layers) {
         if (layer) {
-            if (auto cs = dynamic_cast<CountSketch*>(layer.get())) {
-                layers.push_back(std::make_unique<CountSketch>(*cs));
-            } else if (auto sah = dynamic_cast<SampleAndHold*>(layer.get())) {
-                layers.push_back(std::make_unique<SampleAndHold>(*sah));
+            if (auto cs =
+                    dynamic_cast<CountSketch<FlowKeyType>*>(layer.get())) {
+                layers.push_back(
+                    std::make_unique<CountSketch<FlowKeyType>>(*cs));
+            } else if (auto sah = dynamic_cast<SampleAndHold<FlowKeyType>*>(
+                           layer.get())) {
+                layers.push_back(
+                    std::make_unique<SampleAndHold<FlowKeyType>>(*sah));
             } else {
                 std::cerr << "Unknown Sketch type during copy." << std::endl;
                 exit(1);
@@ -46,7 +53,46 @@ UnivMon::UnivMon(const UnivMon& other)
     }
 }
 
-void UnivMon::update(const TwoTuple& flow, int increment) {
+template <typename FlowKeyType, typename SFINAE>
+UnivMon<FlowKeyType, SFINAE>& UnivMon<FlowKeyType, SFINAE>::operator=(
+    const UnivMon& other) {
+    if (this != &other) {
+        num_layers = other.num_layers;
+        total_memory_bytes = other.total_memory_bytes;
+        backend = other.backend;
+        hash_function =
+            other.hash_function
+                ? other.hash_function->clone()
+                : std::make_unique<DefaultHashFunction<FlowKeyType>>();
+        layers.clear();
+        layers.reserve(static_cast<std::size_t>(num_layers));
+        for (const auto& layer : other.layers) {
+            if (layer) {
+                if (auto cs =
+                        dynamic_cast<CountSketch<FlowKeyType>*>(layer.get())) {
+                    layers.push_back(
+                        std::make_unique<CountSketch<FlowKeyType>>(*cs));
+                } else if (auto sah = dynamic_cast<SampleAndHold<FlowKeyType>*>(
+                               layer.get())) {
+                    layers.push_back(
+                        std::make_unique<SampleAndHold<FlowKeyType>>(*sah));
+                } else {
+                    std::cerr << "Unknown Sketch type during copy."
+                              << std::endl;
+                    exit(1);
+                }
+            } else {
+                layers.push_back(nullptr);
+            }
+        }
+        rng.seed(std::random_device{}());
+    }
+    return *this;
+}
+
+template <typename FlowKeyType, typename SFINAE>
+void UnivMon<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                          int increment) {
     if (increment <= 0) {
         return;
     }
@@ -63,7 +109,8 @@ void UnivMon::update(const TwoTuple& flow, int increment) {
     }
 }
 
-uint64_t UnivMon::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t UnivMon<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     uint64_t best = 0;
 
     // 论文说取全部非零层的最大值
@@ -84,7 +131,8 @@ uint64_t UnivMon::query(const TwoTuple& flow) {
     return best;
 }
 
-void UnivMon::initialize_layers() {
+template <typename FlowKeyType, typename SFINAE>
+void UnivMon<FlowKeyType, SFINAE>::initialize_layers() {
     layers.clear();
     layers.reserve(static_cast<std::size_t>(num_layers));
 
@@ -98,7 +146,7 @@ void UnivMon::initialize_layers() {
         }
         switch (backend) {
             case UnivMonBackend::SaH: {
-                uint64_t entry_bytes = sizeof(TwoTuple) + sizeof(uint64_t);
+                uint64_t entry_bytes = sizeof(FlowKeyType) + sizeof(uint64_t);
                 if (entry_bytes == 0) {
                     entry_bytes = 16;
                 }
@@ -106,13 +154,14 @@ void UnivMon::initialize_layers() {
                 if (capacity == 0) {
                     capacity = 1;
                 }
-                layers.push_back(std::make_unique<SampleAndHold>(capacity));
+                layers.push_back(
+                    std::make_unique<SampleAndHold<FlowKeyType>>(capacity));
                 break;
             }
             case UnivMonBackend::CountSketch: {
                 uint64_t num_hashes = 8;
-                layers.push_back(
-                    std::make_unique<CountSketch>(num_hashes, layer_memory));
+                layers.push_back(std::make_unique<CountSketch<FlowKeyType>>(
+                    num_hashes, layer_memory));
                 break;
             }
             default: {
@@ -123,7 +172,8 @@ void UnivMon::initialize_layers() {
     }
 }
 
-double UnivMon::sample_probability(uint64_t layer) const {
+template <typename FlowKeyType, typename SFINAE>
+double UnivMon<FlowKeyType, SFINAE>::sample_probability(uint64_t layer) const {
     if (layer == 0) {
         return 1.0;
     }
@@ -133,7 +183,9 @@ double UnivMon::sample_probability(uint64_t layer) const {
     return 1.0 / static_cast<double>(1ULL << layer);
 }
 
-uint64_t UnivMon::scale_observation(uint64_t observed, uint64_t layer) const {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t UnivMon<FlowKeyType, SFINAE>::scale_observation(uint64_t observed,
+                                                         uint64_t layer) const {
     if (observed == 0) {
         return 0;
     }
@@ -146,3 +198,7 @@ uint64_t UnivMon::scale_observation(uint64_t observed, uint64_t layer) const {
     }
     return observed * factor;
 }
+
+template class UnivMon<OneTuple>;
+template class UnivMon<TwoTuple>;
+template class UnivMon<FiveTuple>;

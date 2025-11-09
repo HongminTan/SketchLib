@@ -1,11 +1,12 @@
 #include "../third_party/doctest.h"
 
 #include "BloomFilter.h"
+#include "FlowKey.h"
 #include "HashFunction.h"
 
 TEST_SUITE("BloomFilter Tests") {
     TEST_CASE("Basic Insert and Query") {
-        BloomFilter bf(1000, 3);
+        BloomFilter<TwoTuple> bf(1000, 3);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -20,7 +21,7 @@ TEST_SUITE("BloomFilter Tests") {
     }
 
     TEST_CASE("Multiple Flows") {
-        BloomFilter bf(10000, 4);
+        BloomFilter<TwoTuple> bf(10000, 4);
 
         std::vector<TwoTuple> flows;
         for (int i = 0; i < 10; i++) {
@@ -39,8 +40,8 @@ TEST_SUITE("BloomFilter Tests") {
     }
 
     TEST_CASE("Custom Hash Function - MurmurV3") {
-        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
-        BloomFilter bf(2000, 3, std::move(custom_hash));
+        auto custom_hash = std::make_unique<MurmurV3HashFunction<TwoTuple>>();
+        BloomFilter<TwoTuple> bf(2000, 3, std::move(custom_hash));
 
         TwoTuple flow(0xAABBCCDD, 0xEEFF0011);
 
@@ -49,7 +50,8 @@ TEST_SUITE("BloomFilter Tests") {
     }
 
     TEST_CASE("False Positive Test") {
-        BloomFilter bf(100, 2);  // 小的 BF，容易产生假阳性
+        // 小的 BF，容易产生假阳性
+        BloomFilter<TwoTuple> bf(100, 2);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -65,7 +67,7 @@ TEST_SUITE("BloomFilter Tests") {
     }
 
     TEST_CASE("Clear Functionality") {
-        BloomFilter bf(1000, 3);
+        BloomFilter<TwoTuple> bf(1000, 3);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -78,20 +80,42 @@ TEST_SUITE("BloomFilter Tests") {
     }
 
     TEST_CASE("Copy Constructor") {
-        BloomFilter bf1(1000, 3);
+        BloomFilter<TwoTuple> bf1(1000, 3);
 
         TwoTuple flow(0x12345678, 0x87654321);
         bf1.update(flow);
 
-        BloomFilter bf2(bf1);
+        BloomFilter<TwoTuple> bf2(bf1);
 
         CHECK(bf2.query(flow) == bf1.query(flow));
     }
 
     TEST_CASE("Get Parameters") {
-        BloomFilter bf(5000, 7);
-
-        CHECK(bf.get_num_bits() == 5000);
-        CHECK(bf.get_num_hashes() == 7);
+        BloomFilter<TwoTuple> bf(8192, 3);
+        auto num_bits = bf.get_num_bits();
+        auto num_hashes = bf.get_num_hashes();
+        CHECK(num_bits == 8192);
+        CHECK(num_hashes == 3);
     }
+
+    TEST_CASE("OneTuple Support") {
+        BloomFilter<OneTuple> bf(4096, 3);
+        OneTuple flow(0xDEADBEEF);
+
+        bf.update(flow);
+        uint64_t result = bf.query(flow);
+
+        CHECK(result == 1);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        BloomFilter<FiveTuple> bf(4096, 3);
+        FiveTuple flow(0xCAFEBABE, 0xDEADBEEF, 443, 8080, 17);
+
+        bf.update(flow);
+        uint64_t result = bf.query(flow);
+
+        CHECK(result == 1);
+    }
+
 }  // TEST_SUITE

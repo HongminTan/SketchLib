@@ -3,19 +3,17 @@
 
 #include <vector>
 
+#include "FlowKey.h"
 #include "HashFunction.h"
 #include "Sketch.h"
-#include "TwoTuple.h"
-
-// HashPipe 桶大小：TwoTuple(8字节) + count(4字节)
-constexpr uint64_t HPBUCKET_SIZE = 12;
 
 /**
  * @brief HashPipe 的桶结构
  */
+template <typename FlowKeyType>
 struct HPBucket {
     // 流标识符
-    TwoTuple flow_id;
+    FlowKeyType flow_id;
     // 计数
     uint32_t count;
 
@@ -24,7 +22,7 @@ struct HPBucket {
     inline bool empty() const { return count == 0; }
 
     inline void clear() {
-        flow_id = TwoTuple();
+        flow_id = FlowKeyType();
         count = 0;
     }
 };
@@ -34,15 +32,16 @@ struct HPBucket {
  *
  * 使用多级流水线结构，大流会沉淀在某一级，小流逐级推进并被过滤
  */
-class HashPipe : public Sketch {
+template <typename FlowKeyType, typename SFINAE = RequireFlowKey<FlowKeyType>>
+class HashPipe : public Sketch<FlowKeyType> {
    private:
     // stage 数
     uint64_t num_stages;
     // 每个 stage 的桶数
     uint64_t buckets_per_stage;
     // 多级哈希表 [stage][bucket]
-    std::vector<std::vector<HPBucket>> stages;
-    std::unique_ptr<HashFunction> hash_function;
+    std::vector<std::vector<HPBucket<FlowKeyType>>> stages;
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function;
 
    public:
     /**
@@ -51,16 +50,17 @@ class HashPipe : public Sketch {
      * @param num_stages 阶段数
      * @param hash_function
      */
-    HashPipe(uint64_t total_memory,
-             uint64_t num_stages = 8,
-             std::unique_ptr<HashFunction> hash_function = nullptr);
+    HashPipe(
+        uint64_t total_memory,
+        uint64_t num_stages = 8,
+        std::unique_ptr<HashFunction<FlowKeyType>> hash_function = nullptr);
 
     HashPipe(const HashPipe& other);
     HashPipe& operator=(const HashPipe& other);
     ~HashPipe() = default;
 
-    void update(const TwoTuple& flow, int increment = 1) override;
-    uint64_t query(const TwoTuple& flow) override;
+    void update(const FlowKeyType& flow, int increment = 1) override;
+    uint64_t query(const FlowKeyType& flow) override;
 
     inline void clear() override {
         for (auto& stage : stages) {

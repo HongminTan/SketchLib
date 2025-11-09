@@ -1,11 +1,12 @@
 #include "../third_party/doctest.h"
 
 #include "ElasticSketch.h"
+#include "FlowKey.h"
 #include "HashFunction.h"
 
 TEST_SUITE("ElasticSketch Tests") {
     TEST_CASE("Basic Insert and Query") {
-        ElasticSketch es(400, 2, 1024);
+        ElasticSketch<TwoTuple> es(400, 2, 1024);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -16,7 +17,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Heavy Part Exact Counting") {
-        ElasticSketch es(1000, 3, 2048);
+        ElasticSketch<TwoTuple> es(1000, 3, 2048);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -36,7 +37,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Eviction Mechanism") {
-        ElasticSketch es(100, 2, 1024);
+        ElasticSketch<TwoTuple> es(100, 2, 1024);
 
         TwoTuple flow1(0xAAAAAAAA, 0xBBBBBBBB);
         TwoTuple flow2(0xCCCCCCCC, 0xDDDDDDDD);
@@ -55,8 +56,8 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Custom Hash Function - MurmurV3") {
-        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
-        ElasticSketch es(500, 2, 2048, 8, std::move(custom_hash));
+        auto custom_hash = std::make_unique<MurmurV3HashFunction<TwoTuple>>();
+        ElasticSketch<TwoTuple> es(500, 2, 2048, 8, std::move(custom_hash));
 
         TwoTuple flow(0xAABBCCDD, 0xEEFF0011);
 
@@ -69,8 +70,8 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Custom Hash Function - SpookyV2") {
-        auto custom_hash = std::make_unique<SpookyV2HashFunction>();
-        ElasticSketch es(500, 3, 2048, 8, std::move(custom_hash));
+        auto custom_hash = std::make_unique<SpookyV2HashFunction<TwoTuple>>();
+        ElasticSketch<TwoTuple> es(500, 3, 2048, 8, std::move(custom_hash));
 
         TwoTuple flow(0x12341234, 0x56785678);
 
@@ -81,8 +82,8 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Custom Hash Function - CRC64") {
-        auto custom_hash = std::make_unique<CRC64HashFunction>();
-        ElasticSketch es(400, 2, 1536, 8, std::move(custom_hash));
+        auto custom_hash = std::make_unique<CRC64HashFunction<TwoTuple>>();
+        ElasticSketch<TwoTuple> es(400, 2, 1536, 8, std::move(custom_hash));
 
         TwoTuple flow(0x0F0F0F0F, 0xF0F0F0F0);
 
@@ -95,8 +96,8 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Multiple Flows with Different Lambdas") {
-        ElasticSketch es_low(1000, 1, 4096);
-        ElasticSketch es_high(1000, 10, 4096);
+        ElasticSketch<TwoTuple> es_low(1000, 1, 4096);
+        ElasticSketch<TwoTuple> es_high(1000, 10, 4096);
 
         std::vector<TwoTuple> flows;
         for (int i = 0; i < 5; i++) {
@@ -126,7 +127,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Query Non-Existent Flow") {
-        ElasticSketch es(400, 2, 1024);
+        ElasticSketch<TwoTuple> es(400, 2, 1024);
 
         TwoTuple flow(0x00000000, 0x00000001);
         uint64_t result = es.query(flow);
@@ -138,7 +139,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Clear Functionality") {
-        ElasticSketch es(400, 2, 1024);
+        ElasticSketch<TwoTuple> es(400, 2, 1024);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -156,7 +157,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Stress Test - Many Flows") {
-        ElasticSketch es(2000, 2, 8192);
+        ElasticSketch<TwoTuple> es(2000, 2, 8192);
 
         std::vector<TwoTuple> flows;
         for (int i = 0; i < 100; i++) {
@@ -179,7 +180,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Stress Test - High Frequency Flow") {
-        ElasticSketch es(1000, 2, 4096);
+        ElasticSketch<TwoTuple> es(1000, 2, 4096);
 
         TwoTuple heavy_flow(0x99999999, 0x88888888);
 
@@ -193,21 +194,21 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Get Parameters") {
-        ElasticSketch es(1000, 3, 4096, 10);
+        ElasticSketch<TwoTuple> es(1000, 3, 4096, 10);
 
         uint64_t bucket_count = es.get_heavy_bucket_count();
         auto light_size = es.get_light_size();
         uint64_t lambda = es.get_lambda();
 
-        CHECK(bucket_count == 1000 / HEAVY_BUCKET_SIZE);
+        CHECK(bucket_count == 1000 / sizeof(HeavyBucket<TwoTuple>));
         CHECK(light_size.first == 10);
         CHECK(light_size.second == (4096 - 1000) / 10 / 4);
         CHECK(lambda == 3);
     }
 
     TEST_CASE("Light Part Rows Parameter") {
-        ElasticSketch es_4rows(500, 2, 2048, 4);
-        ElasticSketch es_16rows(500, 2, 2048, 16);
+        ElasticSketch<TwoTuple> es_4rows(500, 2, 2048, 4);
+        ElasticSketch<TwoTuple> es_16rows(500, 2, 2048, 16);
 
         auto size_4 = es_4rows.get_light_size();
         auto size_16 = es_16rows.get_light_size();
@@ -219,12 +220,12 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Copy Constructor") {
-        ElasticSketch es1(400, 2, 1024);
+        ElasticSketch<TwoTuple> es1(400, 2, 1024);
 
         TwoTuple flow(0x12345678, 0x87654321);
         es1.update(flow, 10);
 
-        ElasticSketch es2(es1);
+        ElasticSketch<TwoTuple> es2(es1);
 
         CHECK(es2.query(flow) == es1.query(flow));
 
@@ -233,8 +234,8 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Assignment Operator") {
-        ElasticSketch es1(400, 2, 1024);
-        ElasticSketch es2(600, 3, 2048);
+        ElasticSketch<TwoTuple> es1(400, 2, 1024);
+        ElasticSketch<TwoTuple> es2(600, 3, 2048);
 
         TwoTuple flow(0xAAAABBBB, 0xCCCCDDDD);
         es1.update(flow, 15);
@@ -246,7 +247,7 @@ TEST_SUITE("ElasticSketch Tests") {
     }
 
     TEST_CASE("Incremental Updates") {
-        ElasticSketch es(500, 2, 2048);
+        ElasticSketch<TwoTuple> es(500, 2, 2048);
 
         TwoTuple flow(0x11223344, 0x55667788);
 
@@ -256,6 +257,26 @@ TEST_SUITE("ElasticSketch Tests") {
 
         uint64_t result = es.query(flow);
         CHECK(result >= 20);
+    }
+
+    TEST_CASE("OneTuple Support") {
+        ElasticSketch<OneTuple> es(500, 2, 4096);
+        OneTuple flow(0x99887766);
+
+        es.update(flow, 100);
+        uint64_t result = es.query(flow);
+
+        CHECK(result >= 100);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        ElasticSketch<FiveTuple> es(500, 2, 4096);
+        FiveTuple flow(0xAABBCCDD, 0x11223344, 443, 80, 6);
+
+        es.update(flow, 100);
+        uint64_t result = es.query(flow);
+
+        CHECK(result >= 100);
     }
 
 }  // TEST_SUITE

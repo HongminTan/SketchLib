@@ -1,56 +1,62 @@
 #include "SketchLearn.h"
 
-SketchLearn::SketchLearn(uint64_t total_memory,
-                         uint64_t num_rows,
-
-                         double theta,
-                         std::unique_ptr<HashFunction> hash_function)
+template <typename FlowKeyType, typename SFINAE>
+SketchLearn<FlowKeyType, SFINAE>::SketchLearn(
+    uint64_t total_memory,
+    uint64_t num_rows,
+    double theta,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function)
     : num_rows(num_rows),
       num_cols(0),
       hash_function(std::move(hash_function)),
       theta(theta),
-      p(num_bits + 1, 0.0),
-      variance(num_bits + 1, 0.0),
+      p(FLOWKEY_BITS + 1, 0.0),
+      variance(FLOWKEY_BITS + 1, 0.0),
       is_decoded(false) {
     if (!this->hash_function) {
-        this->hash_function = std::make_unique<DefaultHashFunction>();
+        this->hash_function =
+            std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
 
     // 计算每层的内存
-    uint64_t layer_memory = total_memory / (num_bits + 1);
+    uint64_t layer_memory = total_memory / (FLOWKEY_BITS + 1);
 
     // 创建 l+1 层 CountMin
-    for (uint64_t i = 0; i <= num_bits; i++) {
-        layers.push_back(std::make_unique<CountMin>(
+    for (size_t i = 0; i <= FLOWKEY_BITS; i++) {
+        layers.push_back(std::make_unique<CountMin<FlowKeyType>>(
             num_rows, layer_memory, this->hash_function->clone()));
     }
 
     num_cols = layers[0]->get_cols();
 }
 
-SketchLearn::SketchLearn(const SketchLearn& other)
+template <typename FlowKeyType, typename SFINAE>
+SketchLearn<FlowKeyType, SFINAE>::SketchLearn(const SketchLearn& other)
     : num_rows(other.num_rows),
       num_cols(other.num_cols),
       hash_function(other.hash_function
                         ? other.hash_function->clone()
-                        : std::make_unique<DefaultHashFunction>()),
+                        : std::make_unique<DefaultHashFunction<FlowKeyType>>()),
       theta(other.theta),
       p(other.p),
       variance(other.variance),
       decoded_map(other.decoded_map),
       is_decoded(other.is_decoded) {
     for (const auto& layer : other.layers) {
-        layers.push_back(std::make_unique<CountMin>(*layer));
+        layers.push_back(std::make_unique<CountMin<FlowKeyType>>(*layer));
     }
 }
 
-SketchLearn& SketchLearn::operator=(const SketchLearn& other) {
+template <typename FlowKeyType, typename SFINAE>
+SketchLearn<FlowKeyType, SFINAE>& SketchLearn<FlowKeyType, SFINAE>::operator=(
+    const SketchLearn& other) {
     if (this != &other) {
         num_rows = other.num_rows;
         num_cols = other.num_cols;
-        hash_function = other.hash_function
-                            ? other.hash_function->clone()
-                            : std::make_unique<DefaultHashFunction>();
+        hash_function =
+            other.hash_function
+                ? other.hash_function->clone()
+                : std::make_unique<DefaultHashFunction<FlowKeyType>>();
         theta = other.theta;
         p = other.p;
         variance = other.variance;
@@ -59,40 +65,58 @@ SketchLearn& SketchLearn::operator=(const SketchLearn& other) {
 
         layers.clear();
         for (const auto& layer : other.layers) {
-            layers.push_back(std::make_unique<CountMin>(*layer));
+            layers.push_back(std::make_unique<CountMin<FlowKeyType>>(*layer));
         }
     }
     return *this;
 }
 
-std::bitset<SketchLearn::num_bits> SketchLearn::flow_to_bits(
-    const TwoTuple& flow) const {
-    uint64_t flow_key =
-        (static_cast<uint64_t>(flow.src_ip) << 32) | flow.dst_ip;
+// 通用 flow_to_bits
+template <typename FlowKeyType, typename SFINAE>
+std::bitset<SketchLearn<FlowKeyType, SFINAE>::FLOWKEY_BITS>
+SketchLearn<FlowKeyType, SFINAE>::flow_to_bits(const FlowKeyType& flow) const {
+    std::bitset<FLOWKEY_BITS> bits;
+    const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&flow);
 
-    // 转换为 bitset
-    return std::bitset<num_bits>(flow_key);
+    for (size_t i = 0; i < FLOWKEY_SIZE; ++i) {
+        for (size_t j = 0; j < 8; ++j) {
+            bits[i * 8 + j] = (bytes[i] >> j) & 1;
+        }
+    }
+
+    return bits;
 }
 
-TwoTuple SketchLearn::bits_to_flow(const std::bitset<num_bits>& bits) const {
-    // 将 bitset 转换为 uint64_t
-    uint64_t flow_key = static_cast<uint64_t>(bits.to_ullong());
+// 通用 bits_to_flow
+template <typename FlowKeyType, typename SFINAE>
+FlowKeyType SketchLearn<FlowKeyType, SFINAE>::bits_to_flow(
+    const std::bitset<FLOWKEY_BITS>& bits) const {
+    FlowKeyType flow{};
+    uint8_t* bytes = reinterpret_cast<uint8_t*>(&flow);
 
-    // 拆分为 src_ip 和 dst_ip
-    uint32_t src_ip = static_cast<uint32_t>(flow_key >> 32);
-    uint32_t dst_ip = static_cast<uint32_t>(flow_key & 0xFFFFFFFF);
+    for (size_t i = 0; i < FLOWKEY_SIZE; ++i) {
+        uint8_t byte = 0;
+        for (size_t j = 0; j < 8; ++j) {
+            if (bits[i * 8 + j]) {
+                byte |= (1 << j);
+            }
+        }
+        bytes[i] = byte;
+    }
 
-    return TwoTuple(src_ip, dst_ip);
+    return flow;
 }
 
-std::vector<std::bitset<SketchLearn::num_bits>> SketchLearn::expand_template(
+template <typename FlowKeyType, typename SFINAE>
+std::vector<std::bitset<SketchLearn<FlowKeyType, SFINAE>::FLOWKEY_BITS>>
+SketchLearn<FlowKeyType, SFINAE>::expand_template(
     const std::string& template_str) const {
-    std::vector<std::bitset<num_bits>> results;
+    std::vector<std::bitset<FLOWKEY_BITS>> results;
     std::queue<std::string> queue;
     queue.push(template_str);
 
     // 去重 set
-    std::set<uint64_t> unique_set;
+    std::set<std::string> unique_set;
 
     while (!queue.empty()) {
         std::string current = queue.front();
@@ -114,22 +138,22 @@ std::vector<std::bitset<SketchLearn::num_bits>> SketchLearn::expand_template(
         }
 
         if (!found_wildcard) {
-            std::bitset<num_bits> bits(current);
-            unique_set.insert(static_cast<uint64_t>(bits.to_ullong()));
+            unique_set.insert(current);
         }
     }
 
-    // 去重
-    for (uint64_t val : unique_set) {
-        results.push_back(std::bitset<num_bits>(val));
+    // 去重后转换为 bitset
+    for (const std::string& str : unique_set) {
+        results.push_back(std::bitset<FLOWKEY_BITS>(str));
     }
 
     return results;
 }
 
-void SketchLearn::compute_distribution() {
+template <typename FlowKeyType, typename SFINAE>
+void SketchLearn<FlowKeyType, SFINAE>::compute_distribution() {
     // 计算每层的均值和方差
-    for (uint64_t k = 0; k <= num_bits; k++) {
+    for (size_t k = 0; k <= FLOWKEY_BITS; k++) {
         const auto& data = layers[k]->get_raw_data();
 
         // 计算均值
@@ -155,21 +179,23 @@ void SketchLearn::compute_distribution() {
     }
 }
 
-std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
-                                                       uint64_t col_index) {
-    std::vector<TwoTuple> candidates;
-    std::vector<std::bitset<num_bits>> candidate_bits;
+template <typename FlowKeyType, typename SFINAE>
+std::vector<FlowKeyType> SketchLearn<FlowKeyType, SFINAE>::extract_large_flows(
+    uint64_t row_index,
+    uint64_t col_index) {
+    std::vector<FlowKeyType> candidates;
+    std::vector<std::bitset<FLOWKEY_BITS>> candidate_bits;
 
     // Step 1: 估计位级概率
-    std::vector<double> p_(num_bits + 1, 0.0);
-    std::vector<double> Rij(num_bits + 1, 0.0);
+    std::vector<double> p_(FLOWKEY_BITS + 1, 0.0);
+    std::vector<double> Rij(FLOWKEY_BITS + 1, 0.0);
 
     uint32_t count_0 = layers[0]->get_raw_data()[row_index][col_index];
     if (count_0 == 0) {
         return candidates;
     }
 
-    for (uint64_t k = 1; k <= num_bits; k++) {
+    for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
         uint32_t count_k = layers[k]->get_raw_data()[row_index][col_index];
         Rij[k] = static_cast<double>(count_k) / count_0;
 
@@ -185,7 +211,7 @@ std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
 
     // Step 2: 找到候选流
     std::string T;
-    for (uint64_t k = 1; k <= num_bits; k++) {
+    for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
         if (p_[k] > 0.99) {
             T += '1';
         } else if ((1.0 - p_[k]) > 0.99) {
@@ -195,12 +221,12 @@ std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
         }
     }
 
-    // 展开模板，直接返回 bitset 数组
-    std::vector<std::bitset<num_bits>> expanded_bits = expand_template(T);
+    // 展开模板
+    std::vector<std::bitset<FLOWKEY_BITS>> expanded_bits = expand_template(T);
 
     // 验证哈希匹配
     for (const auto& bits : expanded_bits) {
-        TwoTuple flow = bits_to_flow(bits);
+        FlowKeyType flow = bits_to_flow(bits);
         uint64_t hash_index = hash_function->hash(flow, row_index, num_cols);
 
         if (hash_index == col_index) {
@@ -217,11 +243,11 @@ std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
     std::vector<double> e;
 
     for (size_t m = 0; m < candidates.size(); m++) {
-        const std::bitset<num_bits>& f_bits = candidate_bits[m];
-        for (uint64_t k = 1; k <= num_bits; k++) {
+        const std::bitset<FLOWKEY_BITS>& f_bits = candidate_bits[m];
+        for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
             double e_k = 0.0;
 
-            if (f_bits[num_bits - k]) {  // 第 k 位是 1
+            if (f_bits[FLOWKEY_BITS - k]) {  // 第 k 位是 1
                 if ((1.0 - p[k]) > 0) {
                     e_k = ((Rij[k] - p[k]) / (1.0 - p[k])) * count_0;
                     e.push_back(e_k);
@@ -248,11 +274,11 @@ std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
     }
 
     // Step 4: 验证候选流
-    std::vector<TwoTuple> verified_candidates;
+    std::vector<FlowKeyType> verified_candidates;
 
     for (size_t m = 0; m < candidates.size(); m++) {
-        const TwoTuple& f = candidates[m];
-        const std::bitset<num_bits>& f_bits = candidate_bits[m];
+        const FlowKeyType& f = candidates[m];
+        const std::bitset<FLOWKEY_BITS>& f_bits = candidate_bits[m];
         double min_s_f = s_f;
 
         // 遍历所有其他行进行交叉验证
@@ -262,11 +288,11 @@ std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
 
             uint64_t j = hash_function->hash(f, i, num_cols);
 
-            for (uint64_t k = 1; k <= num_bits; k++) {
+            for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
                 uint32_t candidate_count_0 = layers[0]->get_raw_data()[i][j];
                 uint32_t candidate_count_k = layers[k]->get_raw_data()[i][j];
 
-                if (!f_bits[num_bits - k]) {  // 第 k 位是 0
+                if (!f_bits[FLOWKEY_BITS - k]) {  // 第 k 位是 0
                     double diff = candidate_count_0 - candidate_count_k;
                     min_s_f = std::min(min_s_f, diff);
                 } else {  // 第 k 位是 1
@@ -285,15 +311,17 @@ std::vector<TwoTuple> SketchLearn::extract_large_flows(uint64_t row_index,
     return verified_candidates;
 }
 
-void SketchLearn::update(const TwoTuple& flow, int increment) {
-    std::bitset<num_bits> bits = flow_to_bits(flow);
+template <typename FlowKeyType, typename SFINAE>
+void SketchLearn<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                              int increment) {
+    std::bitset<FLOWKEY_BITS> bits = flow_to_bits(flow);
 
     // 更新 Level 0
     layers[0]->update(flow, increment);
 
     // 更新 Level k（第 k 位为 1 的流）
-    for (uint64_t k = 1; k <= num_bits; k++) {
-        if (bits[num_bits - k]) {
+    for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
+        if (bits[FLOWKEY_BITS - k]) {
             layers[k]->update(flow, increment);
         }
     }
@@ -302,17 +330,18 @@ void SketchLearn::update(const TwoTuple& flow, int increment) {
     is_decoded = false;
 }
 
-std::map<TwoTuple, uint64_t> SketchLearn::decode() {
-    std::map<TwoTuple, uint64_t> result;
+template <typename FlowKeyType, typename SFINAE>
+std::map<FlowKeyType, uint64_t> SketchLearn<FlowKeyType, SFINAE>::decode() {
+    std::map<FlowKeyType, uint64_t> result;
 
     // 计算位级计数器分布
     compute_distribution();
 
     // 对每个 (row, col) 提取大流
-    std::vector<TwoTuple> all_candidates;
+    std::vector<FlowKeyType> all_candidates;
     for (uint64_t i = 0; i < num_rows; i++) {
         for (uint64_t j = 0; j < num_cols; j++) {
-            std::vector<TwoTuple> candidates = extract_large_flows(i, j);
+            std::vector<FlowKeyType> candidates = extract_large_flows(i, j);
             all_candidates.insert(all_candidates.end(), candidates.begin(),
                                   candidates.end());
         }
@@ -328,10 +357,10 @@ std::map<TwoTuple, uint64_t> SketchLearn::decode() {
 
     // 从其他统计层中减去提取出的大流
     for (const auto& pair : result) {
-        const TwoTuple& flow = pair.first;
+        const FlowKeyType& flow = pair.first;
         uint32_t count = static_cast<uint32_t>(pair.second);
 
-        std::bitset<num_bits> bits = flow_to_bits(flow);
+        std::bitset<FLOWKEY_BITS> bits = flow_to_bits(flow);
 
         // 从 Level 0 减去
         for (uint64_t i = 0; i < num_rows; i++) {
@@ -346,8 +375,8 @@ std::map<TwoTuple, uint64_t> SketchLearn::decode() {
         }
 
         // 从 Level k 减去
-        for (uint64_t k = 1; k <= num_bits; k++) {
-            if (bits[num_bits - k]) {
+        for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
+            if (bits[FLOWKEY_BITS - k]) {
                 for (uint64_t i = 0; i < num_rows; i++) {
                     auto& data_k =
                         const_cast<std::vector<std::vector<uint32_t>>&>(
@@ -373,7 +402,8 @@ std::map<TwoTuple, uint64_t> SketchLearn::decode() {
     return result;
 }
 
-uint64_t SketchLearn::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t SketchLearn<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     // 如果还没解码，先解码
     if (!is_decoded) {
         decode();
@@ -388,3 +418,7 @@ uint64_t SketchLearn::query(const TwoTuple& flow) {
     // 找不到返回 0
     return 0;
 }
+
+template class SketchLearn<OneTuple>;
+template class SketchLearn<TwoTuple>;
+template class SketchLearn<FiveTuple>;

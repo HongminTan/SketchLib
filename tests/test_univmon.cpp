@@ -1,14 +1,15 @@
-﻿#include <cstdint>
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include "../third_party/doctest.h"
 
+#include "FlowKey.h"
 #include "HashFunction.h"
 #include "UnivMon.h"
 
 TEST_SUITE("UnivMon Tests") {
     TEST_CASE("CountSketch Backend") {
-        UnivMon um(4, 4096);
+        UnivMon<TwoTuple> um(4, 4096);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -23,7 +24,7 @@ TEST_SUITE("UnivMon Tests") {
     }
 
     TEST_CASE("SaH Backend") {
-        UnivMon um(3, 2048, nullptr, UnivMonBackend::SaH);
+        UnivMon<TwoTuple> um(3, 2048, nullptr, UnivMonBackend::SaH);
 
         TwoTuple flow(0xAABBCCDD, 0x11223344);
 
@@ -36,7 +37,7 @@ TEST_SUITE("UnivMon Tests") {
     }
 
     TEST_CASE("Heavy Hitter") {
-        UnivMon um(6, 16384, nullptr, UnivMonBackend::CountSketch);
+        UnivMon<TwoTuple> um(6, 16384, nullptr, UnivMonBackend::CountSketch);
 
         TwoTuple heavyFlow(0x11111111, 0x22222222);
 
@@ -51,7 +52,7 @@ TEST_SUITE("UnivMon Tests") {
     }
 
     TEST_CASE("Zero Update") {
-        UnivMon um(4, 4096);
+        UnivMon<TwoTuple> um(4, 4096);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -59,6 +60,32 @@ TEST_SUITE("UnivMon Tests") {
         uint64_t result = um.query(flow);
 
         CHECK(result == 0);
+    }
+
+    TEST_CASE("OneTuple Support") {
+        UnivMon<OneTuple> um(3, 2048);
+        OneTuple flow(0xFEDCBA98);
+
+        for (int i = 0; i < 1000; i++) {
+            um.update(flow);
+        }
+        uint64_t result = um.query(flow);
+
+        CHECK(result >= 900);
+        CHECK(result <= 1100);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        UnivMon<FiveTuple> um(3, 2048);
+        FiveTuple flow(0x12345678, 0x87654321, 80, 443, 6);
+
+        for (int i = 0; i < 1000; i++) {
+            um.update(flow);
+        }
+        uint64_t result = um.query(flow);
+
+        CHECK(result >= 900);
+        CHECK(result <= 1100);
     }
 
 }  // TEST_SUITE

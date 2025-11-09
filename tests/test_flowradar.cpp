@@ -2,12 +2,13 @@
 
 #include <map>
 
+#include "FlowKey.h"
 #include "FlowRadar.h"
 #include "HashFunction.h"
 
 TEST_SUITE("FlowRadar Tests") {
     TEST_CASE("Basic Update and Decode") {
-        FlowRadar fr(4096);
+        FlowRadar<TwoTuple> fr(4096);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -26,7 +27,7 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Multiple Flows Decode") {
-        FlowRadar fr(16384);
+        FlowRadar<TwoTuple> fr(16384);
 
         std::vector<std::pair<TwoTuple, int>> flows;
         for (int i = 0; i < 5; i++) {
@@ -56,7 +57,7 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Query Before Decode") {
-        FlowRadar fr(4096);
+        FlowRadar<TwoTuple> fr(4096);
 
         TwoTuple flow(0x12345678, 0x87654321);
         fr.update(flow, 15);
@@ -67,7 +68,7 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Query Non-Existent Flow") {
-        FlowRadar fr(4096);
+        FlowRadar<TwoTuple> fr(4096);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -78,8 +79,8 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Custom Hash Function - MurmurV3") {
-        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
-        FlowRadar fr(8192, 0.3, 3, 3, std::move(custom_hash));
+        auto custom_hash = std::make_unique<MurmurV3HashFunction<TwoTuple>>();
+        FlowRadar<TwoTuple> fr(8192, 0.3, 3, 3, std::move(custom_hash));
 
         TwoTuple flow(0xAABBCCDD, 0xEEFF0011);
 
@@ -90,9 +91,9 @@ TEST_SUITE("FlowRadar Tests") {
 
     TEST_CASE("Different BF Percentage") {
         // 20% BF
-        FlowRadar fr1(8192, 0.2);
+        FlowRadar<TwoTuple> fr1(8192, 0.2);
         // 50% BF
-        FlowRadar fr2(8192, 0.5);
+        FlowRadar<TwoTuple> fr2(8192, 0.5);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -104,7 +105,7 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Clear Functionality") {
-        FlowRadar fr(4096);
+        FlowRadar<TwoTuple> fr(4096);
 
         TwoTuple flow(0x11111111, 0x22222222);
         fr.update(flow, 10);
@@ -116,8 +117,28 @@ TEST_SUITE("FlowRadar Tests") {
         CHECK(fr.query(flow) == 0);
     }
 
+    TEST_CASE("OneTuple Support") {
+        FlowRadar<OneTuple> fr(4096);
+        OneTuple flow(0x88776655);
+
+        fr.update(flow, 15);
+        uint64_t result = fr.query(flow);
+
+        CHECK(result == 15);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        FlowRadar<FiveTuple> fr(4096);
+        FiveTuple flow(0xDEADBEEF, 0xCAFEBABE, 8080, 443, 6);
+
+        fr.update(flow, 20);
+        uint64_t result = fr.query(flow);
+
+        CHECK(result == 20);
+    }
+
     TEST_CASE("Incremental Updates") {
-        FlowRadar fr(4096);
+        FlowRadar<TwoTuple> fr(4096);
 
         TwoTuple flow(0x11111111, 0x22222222);
 
@@ -129,7 +150,7 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Decode Returns Map") {
-        FlowRadar fr(8192);
+        FlowRadar<TwoTuple> fr(8192);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -149,7 +170,7 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Stress Test - Many Flows") {
-        FlowRadar fr(32768);
+        FlowRadar<TwoTuple> fr(32768);
 
         std::vector<TwoTuple> flows;
         for (int i = 0; i < 20; i++) {
@@ -168,19 +189,19 @@ TEST_SUITE("FlowRadar Tests") {
     }
 
     TEST_CASE("Copy Constructor") {
-        FlowRadar fr1(4096);
+        FlowRadar<TwoTuple> fr1(4096);
 
         TwoTuple flow(0x12345678, 0x87654321);
         fr1.update(flow, 10);
         fr1.decode();
 
-        FlowRadar fr2(fr1);
+        FlowRadar<TwoTuple> fr2(fr1);
 
         CHECK(fr2.query(flow) == fr1.query(flow));
     }
 
     TEST_CASE("Get Parameters") {
-        FlowRadar fr(8192, 0.3, 4, 5);
+        FlowRadar<TwoTuple> fr(8192, 0.3, 4, 5);
 
         CHECK(fr.get_bf_num_hashes() == 4);
         CHECK(fr.get_ct_num_hashes() == 5);

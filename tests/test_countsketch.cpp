@@ -1,11 +1,12 @@
 #include "../third_party/doctest.h"
 
 #include "CountSketch.h"
+#include "FlowKey.h"
 #include "HashFunction.h"
 
 TEST_SUITE("CountSketch Tests") {
     TEST_CASE("Default Hash Function") {
-        CountSketch cs(3, 1024);
+        CountSketch<TwoTuple> cs(3, 1024);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -17,7 +18,7 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Multiple Updates and Queries") {
-        CountSketch cs(5, 2048);
+        CountSketch<TwoTuple> cs(5, 2048);
 
         std::vector<std::pair<uint32_t, uint32_t>> flows = {
             {0x11111111, 0x22222222},
@@ -39,7 +40,7 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Accumulative Updates for Same Flow") {
-        CountSketch cs(4, 4096);
+        CountSketch<TwoTuple> cs(4, 4096);
 
         TwoTuple flow(0xABCDEF00, 0x12345678);
 
@@ -53,12 +54,12 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Copy Constructor") {
-        CountSketch cs1(3, 1024);
+        CountSketch<TwoTuple> cs1(3, 1024);
 
         TwoTuple flow(0xDEADBEEF, 0xCAFEBABE);
         cs1.update(flow, 42);
 
-        CountSketch cs2(cs1);
+        CountSketch<TwoTuple> cs2(cs1);
 
         uint64_t result1 = cs1.query(flow);
         uint64_t result2 = cs2.query(flow);
@@ -67,8 +68,8 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Custom Hash Function - SpookyV2") {
-        auto custom_hash = std::make_unique<SpookyV2HashFunction>();
-        CountSketch cs(3, 1024, std::move(custom_hash));
+        auto custom_hash = std::make_unique<SpookyV2HashFunction<TwoTuple>>();
+        CountSketch<TwoTuple> cs(3, 1024, std::move(custom_hash));
 
         TwoTuple flow(0xAABBCCDD, 0x11223344);
 
@@ -80,8 +81,8 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Custom Hash Function - MurmurV3") {
-        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
-        CountSketch cs(4, 2048, std::move(custom_hash));
+        auto custom_hash = std::make_unique<MurmurV3HashFunction<TwoTuple>>();
+        CountSketch<TwoTuple> cs(4, 2048, std::move(custom_hash));
 
         TwoTuple flow(0x12345678, 0x9ABCDEF0);
 
@@ -93,8 +94,8 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Custom Hash Function - CRC64") {
-        auto custom_hash = std::make_unique<CRC64HashFunction>();
-        CountSketch cs(4, 2048, std::move(custom_hash));
+        auto custom_hash = std::make_unique<CRC64HashFunction<TwoTuple>>();
+        CountSketch<TwoTuple> cs(4, 2048, std::move(custom_hash));
 
         TwoTuple flow(0x0A0A0A0A, 0xB0B0B0B0);
 
@@ -106,11 +107,33 @@ TEST_SUITE("CountSketch Tests") {
     }
 
     TEST_CASE("Get Parameters") {
-        CountSketch cs(4, 2048);
+        CountSketch<TwoTuple> cs(4, 2048);
         auto rows = cs.get_rows();
         auto cols = cs.get_cols();
         CHECK(rows == 4);
         CHECK(cols == 2048 / rows / CSSKETCH_BUCKET_SIZE);
+    }
+
+    TEST_CASE("OneTuple Support") {
+        CountSketch<OneTuple> cs(5, 4096);
+        OneTuple flow(0xABCDEF00);
+
+        cs.update(flow, 100);
+        uint64_t result = cs.query(flow);
+
+        CHECK(result >= 90);
+        CHECK(result <= 110);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        CountSketch<FiveTuple> cs(5, 4096);
+        FiveTuple flow(0x12345678, 0x87654321, 8080, 443, 6);
+
+        cs.update(flow, 100);
+        uint64_t result = cs.query(flow);
+
+        CHECK(result >= 90);
+        CHECK(result <= 110);
     }
 
 }  // TEST_SUITE

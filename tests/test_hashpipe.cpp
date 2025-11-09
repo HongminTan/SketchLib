@@ -2,12 +2,13 @@
 
 #include <vector>
 
+#include "FlowKey.h"
 #include "HashFunction.h"
 #include "HashPipe.h"
 
 TEST_SUITE("HashPipe Tests") {
     TEST_CASE("Basic Insert and Query") {
-        HashPipe hp(4096);
+        HashPipe<TwoTuple> hp(4096);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -18,7 +19,7 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Heavy Flow Detection") {
-        HashPipe hp(8192);
+        HashPipe<TwoTuple> hp(8192);
 
         TwoTuple heavy_flow(0x11111111, 0x22222222);
         TwoTuple light_flow(0x33333333, 0x44444444);
@@ -38,7 +39,7 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Multiple Heavy Flows") {
-        HashPipe hp(16384, 8);
+        HashPipe<TwoTuple> hp(16384, 8);
 
         std::vector<TwoTuple> flows;
         for (int i = 0; i < 5; i++) {
@@ -64,8 +65,8 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Custom Hash Function - MurmurV3") {
-        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
-        HashPipe hp(4096, 8, std::move(custom_hash));
+        auto custom_hash = std::make_unique<MurmurV3HashFunction<TwoTuple>>();
+        HashPipe<TwoTuple> hp(4096, 8, std::move(custom_hash));
 
         TwoTuple flow(0xAABBCCDD, 0xEEFF0011);
 
@@ -76,8 +77,8 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Custom Hash Function - SpookyV2") {
-        auto custom_hash = std::make_unique<SpookyV2HashFunction>();
-        HashPipe hp(4096, 8, std::move(custom_hash));
+        auto custom_hash = std::make_unique<SpookyV2HashFunction<TwoTuple>>();
+        HashPipe<TwoTuple> hp(4096, 8, std::move(custom_hash));
 
         TwoTuple flow(0x12341234, 0x56785678);
 
@@ -88,8 +89,8 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Custom Hash Function - CRC64") {
-        auto custom_hash = std::make_unique<CRC64HashFunction>();
-        HashPipe hp(4096, 8, std::move(custom_hash));
+        auto custom_hash = std::make_unique<CRC64HashFunction<TwoTuple>>();
+        HashPipe<TwoTuple> hp(4096, 8, std::move(custom_hash));
 
         TwoTuple flow(0x0F0F0F0F, 0xF0F0F0F0);
 
@@ -100,7 +101,7 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Query Non-Existent Flow") {
-        HashPipe hp(4096);
+        HashPipe<TwoTuple> hp(4096);
 
         TwoTuple flow(0x00000000, 0x00000001);
         uint64_t result = hp.query(flow);
@@ -112,7 +113,7 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Clear Functionality") {
-        HashPipe hp(4096);
+        HashPipe<TwoTuple> hp(4096);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -126,9 +127,29 @@ TEST_SUITE("HashPipe Tests") {
         CHECK(hp.query(flow2) == 0);
     }
 
+    TEST_CASE("OneTuple Support") {
+        HashPipe<OneTuple> hp(4096, 4);
+        OneTuple flow(0xFEDCBA98);
+
+        hp.update(flow, 25);
+        uint64_t result = hp.query(flow);
+
+        CHECK(result == 25);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        HashPipe<FiveTuple> hp(4096, 4);
+        FiveTuple flow(0x11223344, 0x55667788, 3000, 8000, 17);
+
+        hp.update(flow, 35);
+        uint64_t result = hp.query(flow);
+
+        CHECK(result == 35);
+    }
+
     TEST_CASE("Different Stage Numbers") {
-        HashPipe hp_4stages(8192, 4);
-        HashPipe hp_16stages(8192, 16);
+        HashPipe<TwoTuple> hp_4stages(8192, 4);
+        HashPipe<TwoTuple> hp_16stages(8192, 16);
 
         CHECK(hp_4stages.get_num_stages() == 4);
         CHECK(hp_16stages.get_num_stages() == 16);
@@ -146,7 +167,7 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Pipeline Eviction - Light Flows Filtered") {
-        HashPipe hp(4096, 8);  // 小内存，容易触发替换
+        HashPipe<TwoTuple> hp(4096, 8);  // 小内存，容易触发替换
 
         // 先插入一个大流
         TwoTuple heavy_flow(0x99999999, 0x88888888);
@@ -164,7 +185,7 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Stress Test - Many Flows") {
-        HashPipe hp(16384, 8);
+        HashPipe<TwoTuple> hp(16384, 8);
 
         // 插入大量不同的流
         std::vector<TwoTuple> flows;
@@ -191,12 +212,12 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Copy Constructor") {
-        HashPipe hp1(4096);
+        HashPipe<TwoTuple> hp1(4096);
 
         TwoTuple flow(0x12345678, 0x87654321);
         hp1.update(flow, 10);
 
-        HashPipe hp2(hp1);
+        HashPipe<TwoTuple> hp2(hp1);
 
         CHECK(hp2.query(flow) == hp1.query(flow));
 
@@ -205,8 +226,8 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Assignment Operator") {
-        HashPipe hp1(4096);
-        HashPipe hp2(8192);
+        HashPipe<TwoTuple> hp1(4096);
+        HashPipe<TwoTuple> hp2(8192);
 
         TwoTuple flow(0xAAAABBBB, 0xCCCCDDDD);
         hp1.update(flow, 15);
@@ -218,14 +239,15 @@ TEST_SUITE("HashPipe Tests") {
     }
 
     TEST_CASE("Get Parameters") {
-        HashPipe hp(8192, 10);
+        HashPipe<TwoTuple> hp(8192, 10);
 
         CHECK(hp.get_num_stages() == 10);
-        CHECK(hp.get_buckets_per_stage() == 8192 / 10 / HPBUCKET_SIZE);
+        CHECK(hp.get_buckets_per_stage() ==
+              8192 / 10 / sizeof(HPBucket<TwoTuple>));
     }
 
     TEST_CASE("Incremental Updates") {
-        HashPipe hp(4096);
+        HashPipe<TwoTuple> hp(4096);
 
         TwoTuple flow(0x11223344, 0x55667788);
 

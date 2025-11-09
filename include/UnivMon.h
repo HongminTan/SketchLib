@@ -7,10 +7,10 @@
 #include <random>
 
 #include "CountSketch.h"
+#include "FlowKey.h"
 #include "HashFunction.h"
 #include "SampleAndHold.h"
 #include "Sketch.h"
-#include "TwoTuple.h"
 
 enum class UnivMonBackend { SaH, CountSketch };
 
@@ -21,13 +21,14 @@ enum class UnivMonBackend { SaH, CountSketch };
  * 每一层以递减的概率（1.0、0.5、0.25、...）采样流。
  * 支持两种后端：Sample-and-Hold（精确）或 Count-Sketch（近似）。
  */
-class UnivMon : public Sketch {
+template <typename FlowKeyType, typename SFINAE = RequireFlowKey<FlowKeyType>>
+class UnivMon : public Sketch<FlowKeyType> {
    private:
     uint64_t num_layers;
     uint64_t total_memory_bytes;
     UnivMonBackend backend;
-    std::unique_ptr<HashFunction> hash_function;
-    std::vector<std::unique_ptr<Sketch>> layers;
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function;
+    std::vector<std::unique_ptr<Sketch<FlowKeyType>>> layers;
     mutable std::mt19937 rng;
 
     void initialize_layers();
@@ -39,15 +40,15 @@ class UnivMon : public Sketch {
    public:
     UnivMon(uint64_t num_layers,
             uint64_t total_memory_bytes,
-            std::unique_ptr<HashFunction> hash_function = nullptr,
+            std::unique_ptr<HashFunction<FlowKeyType>> hash_function = nullptr,
             UnivMonBackend backend = UnivMonBackend::CountSketch);
 
     UnivMon(const UnivMon& other);
     UnivMon& operator=(const UnivMon& other);
     ~UnivMon() = default;
 
-    void update(const TwoTuple& flow, int increment = 1) override;
-    uint64_t query(const TwoTuple& flow) override;
+    void update(const FlowKeyType& flow, int increment = 1) override;
+    uint64_t query(const FlowKeyType& flow) override;
 
     inline uint64_t get_layer_count() const { return num_layers; }
     inline uint64_t get_memory_budget() const { return total_memory_bytes; }

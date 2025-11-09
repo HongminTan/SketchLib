@@ -1,38 +1,48 @@
 #include "CountSketch.h"
 
-CountSketch::CountSketch(uint64_t rows,
-                         uint64_t total_memory_bytes,
-                         std::unique_ptr<HashFunction> hash_function)
+template <typename FlowKeyType, typename SFINAE>
+CountSketch<FlowKeyType, SFINAE>::CountSketch(
+    uint64_t rows,
+    uint64_t total_memory_bytes,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function)
     : rows(rows), hash_function(std::move(hash_function)) {
     if (!this->hash_function) {
-        this->hash_function = std::make_unique<DefaultHashFunction>();
+        this->hash_function =
+            std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
     cols = total_memory_bytes / rows / CSSKETCH_BUCKET_SIZE;
     counter_matrix =
         std::vector<std::vector<int>>(rows, std::vector<int>(cols, 0));
 }
 
-CountSketch::CountSketch(const CountSketch& other)
+template <typename FlowKeyType, typename SFINAE>
+CountSketch<FlowKeyType, SFINAE>::CountSketch(const CountSketch& other)
     : counter_matrix(other.counter_matrix),
       rows(other.rows),
       cols(other.cols),
-      hash_function(other.hash_function
-                        ? other.hash_function->clone()
-                        : std::make_unique<DefaultHashFunction>()) {}
+      hash_function(
+          other.hash_function
+              ? other.hash_function->clone()
+              : std::make_unique<DefaultHashFunction<FlowKeyType>>()) {}
 
-CountSketch& CountSketch::operator=(const CountSketch& other) {
+template <typename FlowKeyType, typename SFINAE>
+CountSketch<FlowKeyType, SFINAE>& CountSketch<FlowKeyType, SFINAE>::operator=(
+    const CountSketch& other) {
     if (this != &other) {
         counter_matrix = other.counter_matrix;
         rows = other.rows;
         cols = other.cols;
-        hash_function = other.hash_function
-                            ? other.hash_function->clone()
-                            : std::make_unique<DefaultHashFunction>();
+        hash_function =
+            other.hash_function
+                ? other.hash_function->clone()
+                : std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
     return *this;
 }
 
-void CountSketch::update(const TwoTuple& flow, int increment) {
+template <typename FlowKeyType, typename SFINAE>
+void CountSketch<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                              int increment) {
     for (uint64_t hash_index = 0; hash_index < rows; hash_index++) {
         uint64_t bucket_index = hash_function->hash(flow, hash_index, cols);
         uint64_t sign_hash = hash_function->hash(flow, hash_index + rows, 2);
@@ -41,7 +51,8 @@ void CountSketch::update(const TwoTuple& flow, int increment) {
     }
 }
 
-uint64_t CountSketch::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t CountSketch<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     std::vector<int64_t> estimates(rows);
     for (uint64_t hash_index = 0; hash_index < rows; hash_index++) {
         uint64_t bucket_index = hash_function->hash(flow, hash_index, cols);
@@ -62,3 +73,7 @@ uint64_t CountSketch::query(const TwoTuple& flow) {
     }
     return static_cast<uint64_t>(std::max(int64_t(0), median_value));
 }
+
+template class CountSketch<OneTuple>;
+template class CountSketch<TwoTuple>;
+template class CountSketch<FiveTuple>;

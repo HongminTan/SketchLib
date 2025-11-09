@@ -1,11 +1,12 @@
 #include "../third_party/doctest.h"
 
 #include "CountMin.h"
+#include "FlowKey.h"
 #include "HashFunction.h"
 
 TEST_SUITE("CountMin Tests") {
     TEST_CASE("Default Hash Function") {
-        CountMin cm(4, 1024);
+        CountMin<TwoTuple> cm(4, 1024);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -16,8 +17,8 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Custom Hash Function - SpookyV2") {
-        auto custom_hash = std::make_unique<SpookyV2HashFunction>();
-        CountMin cm(5, 2048, std::move(custom_hash));
+        auto custom_hash = std::make_unique<SpookyV2HashFunction<TwoTuple>>();
+        CountMin<TwoTuple> cm(5, 2048, std::move(custom_hash));
 
         TwoTuple flow(0x11111111, 0x22222222);
 
@@ -30,8 +31,8 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Custom Hash Function - MurmurV3") {
-        auto custom_hash = std::make_unique<MurmurV3HashFunction>();
-        CountMin cm(5, 2048, std::move(custom_hash));
+        auto custom_hash = std::make_unique<MurmurV3HashFunction<TwoTuple>>();
+        CountMin<TwoTuple> cm(5, 2048, std::move(custom_hash));
 
         TwoTuple flow(0xAABBCCDD, 0xEEFF0011);
 
@@ -44,8 +45,8 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Custom Hash Function - CRC64") {
-        auto custom_hash = std::make_unique<CRC64HashFunction>();
-        CountMin cm(5, 2048, std::move(custom_hash));
+        auto custom_hash = std::make_unique<CRC64HashFunction<TwoTuple>>();
+        CountMin<TwoTuple> cm(5, 2048, std::move(custom_hash));
 
         TwoTuple flow(0x0F0F0F0F, 0xF0F0F0F0);
 
@@ -58,7 +59,7 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Insert Different Flows") {
-        CountMin cm(6, 4096);
+        CountMin<TwoTuple> cm(6, 4096);
 
         std::vector<std::pair<uint32_t, uint32_t>> flows = {
             {0xAAAAAAAA, 0xBBBBBBBB},
@@ -80,7 +81,7 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Stress Test") {
-        CountMin cm(3, 1024);
+        CountMin<TwoTuple> cm(3, 1024);
 
         TwoTuple flow(0x99999999, 0x88888888);
 
@@ -92,7 +93,7 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Query Non-Existent Flows") {
-        CountMin cm(4, 1024);
+        CountMin<TwoTuple> cm(4, 1024);
 
         TwoTuple flow(0x00000000, 0x00000001);
         uint64_t result = cm.query(flow);
@@ -103,11 +104,31 @@ TEST_SUITE("CountMin Tests") {
     }
 
     TEST_CASE("Get Parameters") {
-        CountMin cm(7, 2800);
+        CountMin<TwoTuple> cm(7, 2800);
         auto rows = cm.get_rows();
         auto cols = cm.get_cols();
         CHECK(rows == 7);
         CHECK(cols == 2800 / rows / CMBUCKET_SIZE);
+    }
+
+    TEST_CASE("OneTuple Support") {
+        CountMin<OneTuple> cm(4, 1024);
+        OneTuple flow(0x12345678);
+
+        cm.update(flow, 10);
+        uint64_t result = cm.query(flow);
+
+        CHECK(result >= 10);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        CountMin<FiveTuple> cm(4, 1024);
+        FiveTuple flow(0x12345678, 0x87654321, 80, 443, 6);
+
+        cm.update(flow, 15);
+        uint64_t result = cm.query(flow);
+
+        CHECK(result >= 15);
     }
 
 }  // TEST_SUITE

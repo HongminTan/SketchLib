@@ -2,11 +2,12 @@
 #include <vector>
 #include "../third_party/doctest.h"
 
+#include "FlowKey.h"
 #include "SampleAndHold.h"
 
 TEST_SUITE("SampleAndHold Tests") {
     TEST_CASE("Basic Update") {
-        SampleAndHold sah(10);
+        SampleAndHold<TwoTuple> sah(10);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -20,7 +21,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Multiple Updates on Same Flow") {
-        SampleAndHold sah(5);
+        SampleAndHold<TwoTuple> sah(5);
 
         TwoTuple flow(0xAABBCCDD, 0x11223344);
 
@@ -35,7 +36,7 @@ TEST_SUITE("SampleAndHold Tests") {
 
     TEST_CASE("Capacity Limit and Eviction Policy") {
         // 只能容纳3个流
-        SampleAndHold sah(3);
+        SampleAndHold<TwoTuple> sah(3);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -63,7 +64,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Validate Eviction") {
-        SampleAndHold sah(2);
+        SampleAndHold<TwoTuple> sah(2);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -84,7 +85,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Query Non-Existent Flow") {
-        SampleAndHold sah(5);
+        SampleAndHold<TwoTuple> sah(5);
 
         TwoTuple flow1(0x12345678, 0x87654321);
         TwoTuple flow2(0xAABBCCDD, 0x11223344);
@@ -96,7 +97,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Zero Update") {
-        SampleAndHold sah(5);
+        SampleAndHold<TwoTuple> sah(5);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -107,7 +108,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Negative Update") {
-        SampleAndHold sah(5);
+        SampleAndHold<TwoTuple> sah(5);
 
         TwoTuple flow(0x12345678, 0x87654321);
 
@@ -118,7 +119,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Stress Test with Heavy Flow") {
-        SampleAndHold sah(100);
+        SampleAndHold<TwoTuple> sah(100);
 
         TwoTuple heavy_flow(0x11111111, 0x22222222);
 
@@ -132,7 +133,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Multiple Flows Independence") {
-        SampleAndHold sah(10);
+        SampleAndHold<TwoTuple> sah(10);
 
         std::vector<TwoTuple> flows = {
             TwoTuple(0x11111111, 0x22222222), TwoTuple(0x33333333, 0x44444444),
@@ -152,7 +153,7 @@ TEST_SUITE("SampleAndHold Tests") {
     }
 
     TEST_CASE("Capacity Limit Edge Case") {
-        SampleAndHold sah(1);
+        SampleAndHold<TwoTuple> sah(1);
 
         TwoTuple flow1(0x11111111, 0x22222222);
         TwoTuple flow2(0x33333333, 0x44444444);
@@ -168,8 +169,33 @@ TEST_SUITE("SampleAndHold Tests") {
         CHECK(sah.get_size() == 1);
     }
 
+    TEST_CASE("Get Capacity") {
+        SampleAndHold<TwoTuple> sah(100);
+        CHECK(sah.get_capacity() == 100);
+    }
+
+    TEST_CASE("OneTuple Support") {
+        SampleAndHold<OneTuple> sah(50);
+        OneTuple flow(0x11111111);
+
+        sah.update(flow, 30);
+        uint64_t result = sah.query(flow);
+
+        CHECK(result == 30);
+    }
+
+    TEST_CASE("FiveTuple Support") {
+        SampleAndHold<FiveTuple> sah(50);
+        FiveTuple flow(0xAAAAAAAA, 0xBBBBBBBB, 22, 80, 6);
+
+        sah.update(flow, 40);
+        uint64_t result = sah.query(flow);
+
+        CHECK(result == 40);
+    }
+
     TEST_CASE("Large Capacity Test") {
-        SampleAndHold sah(1000);
+        SampleAndHold<TwoTuple> sah(1000);
 
         // 插入500个流
         for (uint32_t i = 0; i < 500; i++) {

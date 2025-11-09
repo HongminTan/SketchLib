@@ -1,11 +1,14 @@
 #include "SampleAndHold.h"
 
-SampleAndHold::SampleAndHold(uint64_t capacity_value)
+template <typename FlowKeyType, typename SFINAE>
+SampleAndHold<FlowKeyType, SFINAE>::SampleAndHold(uint64_t capacity_value)
     : counters(), capacity(capacity_value > 0 ? capacity_value : 1) {
     counters.reserve(static_cast<std::size_t>(capacity));
 }
 
-void SampleAndHold::update(const TwoTuple& flow, int increment) {
+template <typename FlowKeyType, typename SFINAE>
+void SampleAndHold<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                                int increment) {
     if (increment <= 0) {
         return;
     }
@@ -29,7 +32,8 @@ void SampleAndHold::update(const TwoTuple& flow, int increment) {
     }
 }
 
-uint64_t SampleAndHold::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t SampleAndHold<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     auto it = counters.find(flow);
     if (it == counters.end()) {
         return 0;
@@ -37,7 +41,9 @@ uint64_t SampleAndHold::query(const TwoTuple& flow) {
     return it->second;
 }
 
-SampleAndHold::CounterMap::iterator SampleAndHold::find_min() {
+template <typename FlowKeyType, typename SFINAE>
+typename SampleAndHold<FlowKeyType, SFINAE>::CounterMap::iterator
+SampleAndHold<FlowKeyType, SFINAE>::find_min() {
     auto min_it = counters.begin();
     for (auto it = counters.begin(); it != counters.end(); ++it) {
         if (it->second < min_it->second) {
@@ -46,3 +52,7 @@ SampleAndHold::CounterMap::iterator SampleAndHold::find_min() {
     }
     return min_it;
 }
+
+template class SampleAndHold<OneTuple>;
+template class SampleAndHold<TwoTuple>;
+template class SampleAndHold<FiveTuple>;

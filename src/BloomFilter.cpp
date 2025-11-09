@@ -1,38 +1,48 @@
 #include "BloomFilter.h"
 
-BloomFilter::BloomFilter(uint64_t num_bits,
-                         uint64_t num_hashes,
-                         std::unique_ptr<HashFunction> hash_function)
+template <typename FlowKeyType, typename SFINAE>
+BloomFilter<FlowKeyType, SFINAE>::BloomFilter(
+    uint64_t num_bits,
+    uint64_t num_hashes,
+    std::unique_ptr<HashFunction<FlowKeyType>> hash_function)
     : num_bits(num_bits),
       num_hashes(num_hashes),
       bit_array(num_bits, false),
       hash_function(std::move(hash_function)) {
     if (!this->hash_function) {
-        this->hash_function = std::make_unique<DefaultHashFunction>();
+        this->hash_function =
+            std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
 }
 
-BloomFilter::BloomFilter(const BloomFilter& other)
+template <typename FlowKeyType, typename SFINAE>
+BloomFilter<FlowKeyType, SFINAE>::BloomFilter(const BloomFilter& other)
     : num_bits(other.num_bits),
       num_hashes(other.num_hashes),
       bit_array(other.bit_array),
-      hash_function(other.hash_function
-                        ? other.hash_function->clone()
-                        : std::make_unique<DefaultHashFunction>()) {}
+      hash_function(
+          other.hash_function
+              ? other.hash_function->clone()
+              : std::make_unique<DefaultHashFunction<FlowKeyType>>()) {}
 
-BloomFilter& BloomFilter::operator=(const BloomFilter& other) {
+template <typename FlowKeyType, typename SFINAE>
+BloomFilter<FlowKeyType, SFINAE>& BloomFilter<FlowKeyType, SFINAE>::operator=(
+    const BloomFilter& other) {
     if (this != &other) {
         num_bits = other.num_bits;
         num_hashes = other.num_hashes;
         bit_array = other.bit_array;
-        hash_function = other.hash_function
-                            ? other.hash_function->clone()
-                            : std::make_unique<DefaultHashFunction>();
+        hash_function =
+            other.hash_function
+                ? other.hash_function->clone()
+                : std::make_unique<DefaultHashFunction<FlowKeyType>>();
     }
     return *this;
 }
 
-void BloomFilter::update(const TwoTuple& flow, int increment) {
+template <typename FlowKeyType, typename SFINAE>
+void BloomFilter<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
+                                              int increment) {
     // BloomFilter 无需 increment
     (void)increment;
 
@@ -43,7 +53,8 @@ void BloomFilter::update(const TwoTuple& flow, int increment) {
     }
 }
 
-uint64_t BloomFilter::query(const TwoTuple& flow) {
+template <typename FlowKeyType, typename SFINAE>
+uint64_t BloomFilter<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
     // 检查所有哈希位置，全部为 true 才返回存在
     for (uint64_t i = 0; i < num_hashes; i++) {
         uint64_t index = hash_function->hash(flow, i, num_bits);
@@ -55,3 +66,7 @@ uint64_t BloomFilter::query(const TwoTuple& flow) {
     // 可能存在
     return 1;
 }
+
+template class BloomFilter<OneTuple>;
+template class BloomFilter<TwoTuple>;
+template class BloomFilter<FiveTuple>;
