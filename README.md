@@ -120,6 +120,7 @@ SketchLib/
 │
 ├── third_party/                # 第三方库
 │   ├── doctest.h               # 测试框架
+│   ├── crc32.h/cpp             # BMv2 CRC32 哈希函数
 │   ├── crc64.h/c               # Redis CRC64 哈希函数
 │   ├── MurmurHash3.h/cpp       # MurmurHash3 哈希函数
 │   └── SpookyV2.h/cpp          # SpookyHash 哈希函数
