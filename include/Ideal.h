@@ -23,7 +23,7 @@ class Ideal : public Sketch<FlowKeyType> {
 
     inline void clear() override { flow_counter.clear(); }
 
-    inline const std::unordered_map<FlowKeyType, uint64_t>& get_raw_data() {
+    inline const std::unordered_map<FlowKeyType, uint64_t>& get_raw_data() const {
         return flow_counter;
     }
 };
