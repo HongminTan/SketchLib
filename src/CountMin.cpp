@@ -57,7 +57,7 @@ void CountMin<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t CountMin<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t CountMin<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) const {
     uint32_t min_count = 0xffffffff;
     for (uint64_t hash_index = 0; hash_index < rows; hash_index++) {
         uint64_t bucket_index = hash_function->hash(flow, hash_index, cols);

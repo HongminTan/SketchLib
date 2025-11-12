@@ -95,7 +95,7 @@ void FlowRadar<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-std::map<FlowKeyType, uint64_t> FlowRadar<FlowKeyType, SFINAE>::decode() {
+std::map<FlowKeyType, uint64_t> FlowRadar<FlowKeyType, SFINAE>::decode() const {
     // 创建 counting_table 的副本用于解码
     std::vector<FRBucket<FlowKeyType>> ct_copy = counting_table;
     std::map<FlowKeyType, uint64_t> result;
@@ -142,7 +142,7 @@ std::map<FlowKeyType, uint64_t> FlowRadar<FlowKeyType, SFINAE>::decode() {
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t FlowRadar<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t FlowRadar<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) const {
     // 如果还没解码，先解码
     if (!is_decoded) {
         decode();

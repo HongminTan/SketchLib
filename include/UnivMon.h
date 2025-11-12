@@ -48,7 +48,7 @@ class UnivMon : public Sketch<FlowKeyType> {
     ~UnivMon() = default;
 
     void update(const FlowKeyType& flow, int increment = 1) override;
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     inline uint64_t get_layer_count() const { return num_layers; }
     inline uint64_t get_memory_budget() const { return total_memory_bytes; }

@@ -33,7 +33,8 @@ void SampleAndHold<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t SampleAndHold<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t SampleAndHold<FlowKeyType, SFINAE>::query(
+    const FlowKeyType& flow) const {
     auto it = counters.find(flow);
     if (it == counters.end()) {
         return 0;

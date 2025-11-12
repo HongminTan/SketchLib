@@ -54,7 +54,8 @@ void BloomFilter<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t BloomFilter<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t BloomFilter<FlowKeyType, SFINAE>::query(
+    const FlowKeyType& flow) const {
     // 检查所有哈希位置，全部为 true 才返回存在
     for (uint64_t i = 0; i < num_hashes; i++) {
         uint64_t index = hash_function->hash(flow, i, num_bits);

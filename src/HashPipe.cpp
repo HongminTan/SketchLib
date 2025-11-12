@@ -100,7 +100,7 @@ void HashPipe<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t HashPipe<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t HashPipe<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) const {
     // 在所有 stage 中查找该流
     uint64_t count = 0;
     for (uint64_t stage = 0; stage < num_stages; stage++) {

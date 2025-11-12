@@ -32,7 +32,7 @@ class SampleAndHold : public Sketch<FlowKeyType> {
     SampleAndHold(uint64_t capacity);
 
     void update(const FlowKeyType& flow, int increment = 1) override;
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     inline uint64_t get_capacity() const { return capacity; }
     inline uint64_t get_size() const { return counters.size(); }

@@ -48,8 +48,8 @@ class FlowRadar : public Sketch<FlowKeyType> {
     std::vector<FRBucket<FlowKeyType>> counting_table;
     std::unique_ptr<HashFunction<FlowKeyType>> hash_function;
     // 解码结果缓存
-    std::map<FlowKeyType, uint64_t> decoded_map;
-    bool is_decoded;
+    mutable std::map<FlowKeyType, uint64_t> decoded_map;
+    mutable bool is_decoded;
 
    public:
     /**
@@ -71,13 +71,13 @@ class FlowRadar : public Sketch<FlowKeyType> {
     ~FlowRadar() = default;
 
     void update(const FlowKeyType& flow, int increment = 1) override;
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     /**
      * @brief 解码流信息
      * @return 解码后的流-计数映射
      */
-    std::map<FlowKeyType, uint64_t> decode();
+    std::map<FlowKeyType, uint64_t> decode() const;
 
     inline void clear() override {
         bloom_filter->clear();

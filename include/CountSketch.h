@@ -33,7 +33,7 @@ class CountSketch : public Sketch<FlowKeyType> {
     ~CountSketch() = default;
 
     void update(const FlowKeyType& flow, int increment = 1) override;
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     inline uint64_t get_rows() const { return rows; }
     inline uint64_t get_cols() const { return cols; }

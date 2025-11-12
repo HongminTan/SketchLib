@@ -60,7 +60,7 @@ class HashPipe : public Sketch<FlowKeyType> {
     ~HashPipe() = default;
 
     void update(const FlowKeyType& flow, int increment = 1) override;
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     inline void clear() override {
         for (auto& stage : stages) {

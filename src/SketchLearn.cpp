@@ -151,7 +151,7 @@ SketchLearn<FlowKeyType, SFINAE>::expand_template(
 }
 
 template <typename FlowKeyType, typename SFINAE>
-void SketchLearn<FlowKeyType, SFINAE>::compute_distribution() {
+void SketchLearn<FlowKeyType, SFINAE>::compute_distribution() const {
     // 计算每层的均值和方差
     for (size_t k = 0; k <= FLOWKEY_BITS; k++) {
         const auto& data = layers[k]->get_raw_data();
@@ -182,7 +182,7 @@ void SketchLearn<FlowKeyType, SFINAE>::compute_distribution() {
 template <typename FlowKeyType, typename SFINAE>
 std::vector<FlowKeyType> SketchLearn<FlowKeyType, SFINAE>::extract_large_flows(
     uint64_t row_index,
-    uint64_t col_index) {
+    uint64_t col_index) const {
     std::vector<FlowKeyType> candidates;
     std::vector<std::bitset<FLOWKEY_BITS>> candidate_bits;
 
@@ -331,7 +331,8 @@ void SketchLearn<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-std::map<FlowKeyType, uint64_t> SketchLearn<FlowKeyType, SFINAE>::decode() {
+std::map<FlowKeyType, uint64_t> SketchLearn<FlowKeyType, SFINAE>::decode()
+    const {
     std::map<FlowKeyType, uint64_t> result;
 
     // 计算位级计数器分布
@@ -403,7 +404,8 @@ std::map<FlowKeyType, uint64_t> SketchLearn<FlowKeyType, SFINAE>::decode() {
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t SketchLearn<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t SketchLearn<FlowKeyType, SFINAE>::query(
+    const FlowKeyType& flow) const {
     // 如果还没解码，先解码
     if (!is_decoded) {
         decode();

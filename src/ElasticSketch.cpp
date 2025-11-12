@@ -171,7 +171,8 @@ void ElasticSketch<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t ElasticSketch<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t ElasticSketch<FlowKeyType, SFINAE>::query(
+    const FlowKeyType& flow) const {
     bool flag = false;
     uint64_t heavy_count = heavy_part->query(flow, flag);
 

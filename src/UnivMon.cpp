@@ -110,7 +110,7 @@ void UnivMon<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t UnivMon<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t UnivMon<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) const {
     uint64_t best = 0;
 
     // 论文说取全部非零层的最大值

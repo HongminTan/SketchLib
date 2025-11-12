@@ -7,7 +7,7 @@ void Ideal<FlowKeyType, SFINAE>::update(const FlowKeyType& flow,
 }
 
 template <typename FlowKeyType, typename SFINAE>
-uint64_t Ideal<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) {
+uint64_t Ideal<FlowKeyType, SFINAE>::query(const FlowKeyType& flow) const {
     auto it = flow_counter.find(flow);
     if (it != flow_counter.end()) {
         return it->second;

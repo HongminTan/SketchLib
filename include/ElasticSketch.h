@@ -133,7 +133,7 @@ class ElasticSketch : public Sketch<FlowKeyType> {
 
     void update(const FlowKeyType& flow, int increment = 1) override;
 
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     inline void clear() override {
         heavy_part->clear();

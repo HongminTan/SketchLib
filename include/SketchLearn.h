@@ -36,22 +36,22 @@ class SketchLearn : public Sketch<FlowKeyType> {
     // 推断阈值
     double theta;
     // 每层的均值
-    std::vector<double> p;
+    mutable std::vector<double> p;
     // 每层的方差
-    std::vector<double> variance;
+    mutable std::vector<double> variance;
 
     // 解码结果缓存
-    std::map<FlowKeyType, uint64_t> decoded_map;
-    bool is_decoded;
+    mutable std::map<FlowKeyType, uint64_t> decoded_map;
+    mutable bool is_decoded;
 
     // 辅助函数
     std::bitset<FLOWKEY_BITS> flow_to_bits(const FlowKeyType& flow) const;
     FlowKeyType bits_to_flow(const std::bitset<FLOWKEY_BITS>& bits) const;
     std::vector<std::bitset<FLOWKEY_BITS>> expand_template(
         const std::string& template_str) const;
-    void compute_distribution();
+    void compute_distribution() const;
     std::vector<FlowKeyType> extract_large_flows(uint64_t row_index,
-                                                 uint64_t col_index);
+                                                 uint64_t col_index) const;
 
    public:
     /**
@@ -71,13 +71,13 @@ class SketchLearn : public Sketch<FlowKeyType> {
     ~SketchLearn() = default;
 
     void update(const FlowKeyType& flow, int increment = 1) override;
-    uint64_t query(const FlowKeyType& flow) override;
+    uint64_t query(const FlowKeyType& flow) const override;
 
     /**
      * @brief 解码：提取大流
      * @return 解码后的流-计数映射
      */
-    std::map<FlowKeyType, uint64_t> decode();
+    std::map<FlowKeyType, uint64_t> decode() const;
 
     inline void clear() override {
         for (auto& layer : layers) {
