@@ -159,7 +159,7 @@ void UnivMon<FlowKeyType, SFINAE>::initialize_layers() {
                 break;
             }
             case UnivMonBackend::CountSketch: {
-                uint64_t num_hashes = 8;
+                uint64_t num_hashes = num_layers;
                 layers.push_back(std::make_unique<CountSketch<FlowKeyType>>(
                     num_hashes, layer_memory));
                 break;
