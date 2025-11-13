@@ -111,40 +111,52 @@ template <typename FlowKeyType, typename SFINAE>
 std::vector<std::bitset<SketchLearn<FlowKeyType, SFINAE>::FLOWKEY_BITS>>
 SketchLearn<FlowKeyType, SFINAE>::expand_template(
     const std::string& template_str) const {
+    // 根据FlowKey类型设置最大通配符数，防止展开时 OOM
+    size_t MAX_WILDCARDS;
+    if (sizeof(FlowKeyType) == 4) {
+        // OneTuple (4 bytes = 32 bits): 最多26个通配符 (~6.7GB)
+        MAX_WILDCARDS = 26;
+    } else if (sizeof(FlowKeyType) == 8) {
+        // TwoTuple (8 bytes = 64 bits): 最多25个通配符 (~6.4GB)
+        MAX_WILDCARDS = 25;
+    } else if (sizeof(FlowKeyType) == 16) {
+        // FiveTuple (16 bytes = 128 bits): 最多24个通配符 (~4.35GB)
+        MAX_WILDCARDS = 24;
+    }
+
+    // 用位掩码枚举算法
     std::vector<std::bitset<FLOWKEY_BITS>> results;
-    std::queue<std::string> queue;
-    queue.push(template_str);
+    std::vector<size_t> wildcard_positions;
 
-    // 去重 set
-    std::set<std::string> unique_set;
-
-    while (!queue.empty()) {
-        std::string current = queue.front();
-        queue.pop();
-
-        bool found_wildcard = false;
-        for (size_t i = 0; i < current.length(); i++) {
-            if (current[i] == '*') {
-                // 展开为 0 和 1
-                std::string with_0 = current;
-                std::string with_1 = current;
-                with_0[i] = '0';
-                with_1[i] = '1';
-                queue.push(with_0);
-                queue.push(with_1);
-                found_wildcard = true;
-                break;
+    for (size_t i = 0; i < template_str.length(); ++i) {
+        if (template_str[i] == '*') {
+            wildcard_positions.push_back(i);
+            if (wildcard_positions.size() > MAX_WILDCARDS) {
+                return {};
             }
-        }
-
-        if (!found_wildcard) {
-            unique_set.insert(current);
         }
     }
 
-    // 去重后转换为 bitset
-    for (const std::string& str : unique_set) {
-        results.push_back(std::bitset<FLOWKEY_BITS>(str));
+    size_t wildcard_count = wildcard_positions.size();
+
+    if (wildcard_count == 0) {
+        results.push_back(std::bitset<FLOWKEY_BITS>(template_str));
+        return results;
+    }
+
+    // 直接枚举所有可能的位组合
+    uint64_t total_combinations = 1ULL << wildcard_count;
+    results.reserve(total_combinations);
+
+    for (uint64_t mask = 0; mask < total_combinations; ++mask) {
+        std::string candidate = template_str;
+
+        // 根据位掩码填充通配符
+        for (size_t i = 0; i < wildcard_count; ++i) {
+            candidate[wildcard_positions[i]] = (mask & (1ULL << i)) ? '1' : '0';
+        }
+
+        results.emplace_back(candidate);
     }
 
     return results;
