@@ -224,12 +224,19 @@ std::vector<FlowKeyType> SketchLearn<FlowKeyType, SFINAE>::extract_large_flows(
     // Step 2: 找到候选流
     std::string T;
     for (size_t k = 1; k <= FLOWKEY_BITS; k++) {
-        if (p_[k] > 0.99) {
-            T += '1';
-        } else if ((1.0 - p_[k]) > 0.99) {
-            T += '0';
-        } else {
+        // 置信度
+        double confidence = std::max(p_[k], 1.0 - p_[k]);
+        // 最佳猜测
+        char guess = (p_[k] > 0.5) ? '1' : '0';
+        if (confidence > 0.99) {
+            // 高置信度 (>99%): 直接使用最佳猜测，不展开
+            T += guess;
+        } else if (confidence > 0.95) {
+            // 中等置信度 (95%-99%): 标记为通配符，需要展开
             T += '*';
+        } else {
+            // 低置信度 (<=95%): 使用最佳猜测，不展开
+            T += guess;
         }
     }
 
