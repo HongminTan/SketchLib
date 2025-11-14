@@ -1,6 +1,6 @@
 # SketchLib 示例程序
 
-本目录包含 SketchLib 的 7 个核心 Sketch 算法的最简使用示例。
+本目录包含 SketchLib 的 8 个核心 Sketch 算法的最简使用示例。
 
 ## 📁 示例文件
 
@@ -13,6 +13,7 @@
 | `example_univmon.cpp` | UnivMon | 分层采样，多分辨率监控 |
 | `example_sketchlearn.cpp` | SketchLearn | 位级分层，主动发现大流 |
 | `example_flowradar.cpp` | FlowRadar | XOR 编码，迭代解码 |
+| `example_mvsketch.cpp` | MV-Sketch | 投票机制，识别主要流 |
 
 ## 🎯 FlowKey 类型
 
@@ -47,6 +48,7 @@ ninja example_hashpipe
 ninja example_univmon
 ninja example_sketchlearn
 ninja example_flowradar
+ninja example_mvsketch
 ```
 
 ## 🏃 运行示例
@@ -62,6 +64,7 @@ ninja example_flowradar
 ./examples/example_univmon
 ./examples/example_sketchlearn
 ./examples/example_flowradar
+./examples/example_mvsketch
 ```
 
 ## 📊 示例输出
@@ -115,6 +118,13 @@ query=7
 query=10 bf_hashes=3 ct_hashes=3 table_size=145
 query=5 bf_hashes=3 ct_hashes=3 table_size=145
 query=7 bf_hashes=4 ct_hashes=3 table_size=290
+```
+
+### MV-Sketch
+```
+query=10 rows=4 cols=21
+query=5 rows=4 cols=32
+query=7 rows=5 cols=34
 ```
 
 ## 💡 代码结构
@@ -182,6 +192,7 @@ uint64_t count = sketch.query(flow_key);
 - **UnivMon**: `get_layer_count()`, `get_memory_budget()`, `get_backend()`
 - **SketchLearn**: `get_num_rows()`, `get_num_cols()`, `get_theta()`
 - **FlowRadar**: `get_bf_num_hashes()`, `get_ct_num_hashes()`, `get_table_size()`
+- **MV-Sketch**: `get_rows()`, `get_cols()`
 
 ## 📚 更多信息
 

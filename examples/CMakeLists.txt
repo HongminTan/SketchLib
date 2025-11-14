@@ -56,6 +56,7 @@ set(EXAMPLE_SOURCES
     example_univmon.cpp         # um
     example_sketchlearn.cpp     # sl
     example_flowradar.cpp       # fr
+    example_mvsketch.cpp        # mv
 )
 
 # 为每个示例创建可执行文件

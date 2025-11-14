@@ -31,6 +31,9 @@ FlowRadar 基于 XOR 编码和迭代解码，可以恢复所有流及其精确�
 ### SketchLearn
 SketchLearn 基于位级分层和概率推断，使用多层 Count-Min Sketch 记录不同位模式的流量。通过统计学习主动发现大流。
 
+### MV-Sketch
+MV-Sketch 使用投票机制识别主要流的频率估计算法。每个桶存储一个候选流，通过 count 的正负来识别主要流。查询时使用多行哈希取最小值来减少估计误差。适合内存受限场景下的流频率估计。
+
 ## 🔧 构建说明
 
 ### 前置要求
@@ -62,6 +65,7 @@ ninja
 ./examples/example_univmon
 ./examples/example_sketchlearn
 ./examples/example_flowradar
+./examples/example_mvsketch
 ```
 
 ### CMake 构建选项
@@ -103,6 +107,7 @@ SketchLib/
 │   ├── BloomFilter.h           # BloomFilter
 │   ├── FlowRadar.h             # FlowRadar
 │   ├── SketchLearn.h           # SketchLearn
+│   ├── MVSketch.h              # MV-Sketch
 │   └── seed_list.h             # 哈希种子列表
 │
 ├── src/                        # 源文件实现
@@ -115,6 +120,7 @@ SketchLib/
 │   ├── BloomFilter.cpp
 │   ├── FlowRadar.cpp
 │   ├── SketchLearn.cpp
+│   ├── MVSketch.cpp
 │   ├── HashFunction.cpp
 │   └── seed_list.cpp
 │
@@ -136,7 +142,8 @@ SketchLib/
 │   ├── test_hashpipe.cpp       # HashPipe 测试
 │   ├── test_bloomfilter.cpp    # BloomFilter 测试
 │   ├── test_flowradar.cpp      # FlowRadar 测试
-│   └── test_sketchlearn.cpp    # SketchLearn 测试
+│   ├── test_sketchlearn.cpp    # SketchLearn 测试
+│   └── test_mvsketch.cpp       # MV-Sketch 测试
 │
 ├── examples/                   # 示例代码
 │   ├── CMakeLists.txt
@@ -147,7 +154,8 @@ SketchLib/
 │   ├── example_hashpipe.cpp    # HashPipe 示例
 │   ├── example_univmon.cpp     # UnivMon 示例
 │   ├── example_sketchlearn.cpp # SketchLearn 示例
-│   └── example_flowradar.cpp   # FlowRadar 示例
+│   ├── example_flowradar.cpp   # FlowRadar 示例
+│   └── example_mvsketch.cpp    # MV-Sketch 示例
 │
 └── build/                      # 构建输出（生成）
     ├── libSketchLib.a          # 静态库
@@ -159,7 +167,8 @@ SketchLib/
         ├── example_hashpipe
         ├── example_univmon
         ├── example_sketchlearn
-        └── example_flowradar
+        ├── example_flowradar
+        └── example_mvsketch
 ```
 
 ## 🙏 致谢
