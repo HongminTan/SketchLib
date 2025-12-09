@@ -1,7 +1,14 @@
 #ifndef FLOWKEY_H
 #define FLOWKEY_H
 
+#ifdef __BPF__
 #include "autogen/vmlinux.h"
+
+#include <bpf/bpf_endian.h>
+#include <bpf/bpf_helpers.h>
+#else
+#include <stdint.h>
+#endif /* __BPF__ */
 
 struct OneTuple {
     uint32_t ip;
@@ -21,10 +28,8 @@ struct FiveTuple {
     uint8_t padding[3];
 };
 
-_Static_assert(sizeof(struct OneTuple) == sizeof(uint32_t),
-               "OneTuple size must be 4 bytes");
-_Static_assert(sizeof(struct TwoTuple) == sizeof(__u64),
-               "TwoTuple size must be 8 bytes");
+_Static_assert(sizeof(struct OneTuple) == 4, "OneTuple size must be 4 bytes");
+_Static_assert(sizeof(struct TwoTuple) == 8, "TwoTuple size must be 8 bytes");
 _Static_assert(sizeof(struct FiveTuple) == 16,
                "FiveTuple size must be 16 bytes");
 
@@ -45,6 +50,7 @@ typedef struct FiveTuple FlowKey;
 #define flowkey_extractor extract_five_tuple
 #endif
 
+#ifdef __BPF__
 // 通用的 FlowKey 解析接口
 #define extract_flowkey(ctx, key) flowkey_extractor((ctx), (key))
 
@@ -187,5 +193,6 @@ static __always_inline int extract_five_tuple(struct xdp_md* ctx,
 
     return 0;
 }
+#endif /* __BPF__ */
 
 #endif /* FLOWKEY_H */
