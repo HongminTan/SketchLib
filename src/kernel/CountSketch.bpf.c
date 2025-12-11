@@ -11,10 +11,10 @@
 // Counter map with mmap support
 struct counters {
     __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, CM_ROWS* CM_COLS);
+    __uint(max_entries, CS_ROWS* CS_COLS);
     __uint(map_flags, BPF_F_MMAPABLE);
     __type(key, uint32_t);
-    __type(value, CM_COUNTER_TYPE);
+    __type(value, CS_COUNTER_TYPE);
 };
 
 // counter maps double buffer
@@ -44,14 +44,18 @@ int update(struct xdp_md* ctx) {
         return XDP_PASS;
 
 #pragma unroll
-    for (int row = 0; row < CM_ROWS; ++row) {
-        // 计算索引
-        uint32_t index = hash(&key, row, CM_COLS);
-        uint32_t offset = (uint32_t)(row * CM_COLS + index);
+    for (int row = 0; row < CS_ROWS; ++row) {
+        // 计算桶索引
+        uint32_t index = hash(&key, row, CS_COLS);
+        uint32_t offset = (uint32_t)(row * CS_COLS + index);
 
-        CM_COUNTER_TYPE* counter = bpf_map_lookup_elem(current_counters, &offset);
+        // 计算符号哈希
+        uint32_t sign_hash = hash(&key, row + CS_ROWS, 2);
+        int32_t increment = sign_hash ? 1 : -1;
+
+        CS_COUNTER_TYPE* counter = bpf_map_lookup_elem(current_counters, &offset);
         if (counter) {
-            __sync_fetch_and_add(counter, 1);
+            __sync_fetch_and_add(counter, increment);
         }
     }
 
@@ -59,4 +63,4 @@ int update(struct xdp_md* ctx) {
 }
 
 // GPL License
-char LICENSE[] SEC("license") = "Dual BSD/GPL";
+char CS_LICENSE[] SEC("license") = "Dual BSD/GPL";

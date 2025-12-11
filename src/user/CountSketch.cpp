@@ -1,5 +1,5 @@
 #include "Config.h"
-#include "CountMin.skel.h"
+#include "CountSketch.skel.h"
 #include "FlowKey.h"
 #include "Sketch.h"
 #include "hash.h"
@@ -8,21 +8,22 @@
 #include <linux/if_link.h>
 #include <net/if.h>
 #include <sys/mman.h>
+#include <algorithm>
 #include <cstring>
 
-class CountMinUser : public Sketch {
+class CountSketchUser : public Sketch {
    private:
-    struct CountMin* skel_;
+    struct CountSketch* skel_;
     int select_counter_fd_;
     int counters_fd_[2];
-    uint32_t* counters_mmap_[2];
+    int32_t* counters_mmap_[2];
     // 内核正在使用的 map
     int current_active_;
     // 挂载网卡索引
     unsigned int ifindex_;
 
    public:
-    CountMinUser()
+    CountSketchUser()
         : skel_(nullptr),
           select_counter_fd_(-1),
           current_active_(0),
@@ -32,7 +33,7 @@ class CountMinUser : public Sketch {
         counters_mmap_[0] = nullptr;
         counters_mmap_[1] = nullptr;
 
-        skel_ = CountMin::open_and_load();
+        skel_ = CountSketch::open_and_load();
         if (!skel_) {
             exit(-1);
         }
@@ -40,49 +41,49 @@ class CountMinUser : public Sketch {
         // 拿到 select_counter 的描述符
         select_counter_fd_ = bpf_map__fd(skel_->maps.select_counter);
         if (select_counter_fd_ < 0) {
-            CountMin::destroy(skel_);
+            CountSketch::destroy(skel_);
             exit(-1);
         }
 
         // 拿到 double buffer 的描述符
         counters_fd_[0] = bpf_map__fd(skel_->maps.counters_0);
         if (counters_fd_[0] < 0) {
-            CountMin::destroy(skel_);
+            CountSketch::destroy(skel_);
             exit(-1);
         }
         counters_fd_[1] = bpf_map__fd(skel_->maps.counters_1);
         if (counters_fd_[1] < 0) {
-            CountMin::destroy(skel_);
+            CountSketch::destroy(skel_);
             exit(-1);
         }
 
         // 计算 map 在内存中的实际排布
-        size_t mmap_size = CM_ROWS * CM_COLS * MMAP_STRIDE(CM_COUNTER_TYPE);
+        size_t mmap_size = CS_ROWS * CS_COLS * MMAP_STRIDE(CS_COUNTER_TYPE);
         // mmap 映射两个 counter
-        counters_mmap_[0] = static_cast<uint32_t*>(
+        counters_mmap_[0] = static_cast<int32_t*>(
             mmap(nullptr, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,
                  counters_fd_[0], 0));
         if (counters_mmap_[0] == MAP_FAILED) {
-            CountMin::destroy(skel_);
+            CountSketch::destroy(skel_);
             exit(-1);
         }
-        counters_mmap_[1] = static_cast<uint32_t*>(
+        counters_mmap_[1] = static_cast<int32_t*>(
             mmap(nullptr, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED,
                  counters_fd_[1], 0));
         if (counters_mmap_[1] == MAP_FAILED) {
             munmap(counters_mmap_[0], mmap_size);
-            CountMin::destroy(skel_);
+            CountSketch::destroy(skel_);
             exit(-1);
         }
 
         current_active_ = 0;
     }
 
-    ~CountMinUser() {
+    ~CountSketchUser() {
         detach();
 
         // 取消 mmap 映射
-        size_t mmap_size = CM_ROWS * CM_COLS * MMAP_STRIDE(CM_COUNTER_TYPE);
+        size_t mmap_size = CS_ROWS * CS_COLS * MMAP_STRIDE(CS_COUNTER_TYPE);
         if (counters_mmap_[0] != nullptr && counters_mmap_[0] != MAP_FAILED) {
             munmap(counters_mmap_[0], mmap_size);
         }
@@ -91,7 +92,7 @@ class CountMinUser : public Sketch {
         }
 
         if (skel_) {
-            CountMin::destroy(skel_);
+            CountSketch::destroy(skel_);
             skel_ = nullptr;
         }
     }
@@ -154,22 +155,33 @@ class CountMinUser : public Sketch {
         uint8_t* snapshot_map =
             reinterpret_cast<uint8_t*>(counters_mmap_[1 - current_active_]);
 
-        uint64_t min_count = UINT64_MAX;
+        int64_t estimates[CS_ROWS];
 
-        for (int row = 0; row < CM_ROWS; row++) {
-            uint32_t index = hash(&flow, row, CM_COLS);
-            uint32_t offset = row * CM_COLS + index;
+        for (int row = 0; row < CS_ROWS; row++) {
+            uint32_t index = hash(&flow, row, CS_COLS);
+            uint32_t offset = row * CS_COLS + index;
 
             // 需要用 stride 来对齐内存
-            CM_COUNTER_TYPE value = *reinterpret_cast<CM_COUNTER_TYPE*>(
-                snapshot_map + offset * MMAP_STRIDE(CM_COUNTER_TYPE));
+            CS_COUNTER_TYPE value = *reinterpret_cast<CS_COUNTER_TYPE*>(
+                snapshot_map + offset * MMAP_STRIDE(CS_COUNTER_TYPE));
 
-            if (value < min_count) {
-                min_count = value;
-            }
+            // 存储行内值
+            uint32_t sign_hash = hash(&flow, row + CS_ROWS, 2);
+            estimates[row] = sign_hash ? value : -value;
         }
 
-        return min_count;
+        // 取中位数
+        std::sort(estimates, estimates + CS_ROWS);
+        uint64_t median_index = CS_ROWS / 2;
+        int64_t median_value;
+        if (CS_ROWS % 2 == 0) {
+            median_value =
+                (estimates[median_index] + estimates[median_index - 1]) / 2;
+        } else {
+            median_value = estimates[median_index];
+        }
+
+        return static_cast<uint64_t>(std::max(int64_t(0), median_value));
     }
 
     // 清空用户 buffer
@@ -178,6 +190,6 @@ class CountMinUser : public Sketch {
             reinterpret_cast<uint8_t*>(counters_mmap_[1 - current_active_]);
         // 清空整个mmap区域
         std::memset(snapshot_map, 0,
-                    CM_ROWS * CM_COLS * MMAP_STRIDE(CM_COUNTER_TYPE));
+                    CS_ROWS * CS_COLS * MMAP_STRIDE(CS_COUNTER_TYPE));
     }
 };

@@ -9,3 +9,8 @@
 #define CM_MEMORY (1 * 1024 * 1024)  // 1 MB
 #define CM_COUNTER_TYPE uint32_t
 #define CM_COLS (CM_MEMORY / CM_ROWS / sizeof(CM_COUNTER_TYPE))
+
+#define CS_ROWS 4
+#define CS_MEMORY (1 * 1024 * 1024)  // 1 MB
+#define CS_COUNTER_TYPE int32_t
+#define CS_COLS (CS_MEMORY / CS_ROWS / sizeof(CS_COUNTER_TYPE))
