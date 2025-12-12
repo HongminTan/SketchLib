@@ -14,3 +14,14 @@
 #define CS_MEMORY (1 * 1024 * 1024)  // 1 MB
 #define CS_COUNTER_TYPE int32_t
 #define CS_COLS (CS_MEMORY / CS_ROWS / sizeof(CS_COUNTER_TYPE))
+
+#define ES_TOTAL_MEMORY (1 * 1024 * 1024)  // 1 MB
+#define ES_HEAVY_MEMORY (256 * 1024)       // 256 KB
+#define ES_HEAVY_BUCKET_COUNT (ES_HEAVY_MEMORY / sizeof(struct HeavyBucket))
+#define ES_LIGHT_MEMORY (ES_TOTAL_MEMORY - ES_HEAVY_MEMORY)
+#define ES_LAMBDA 8      // 投票替换阈值
+#define ES_LIGHT_ROWS 4  // Light Part 行数
+#define ES_LIGHT_COUNTER_TYPE uint32_t
+#define ES_LIGHT_COLS \
+    (ES_LIGHT_MEMORY / ES_LIGHT_ROWS / sizeof(ES_LIGHT_COUNTER_TYPE))
+#define ES_HEAVY_SEED 104
