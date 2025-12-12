@@ -63,4 +63,4 @@ int update(struct xdp_md* ctx) {
 }
 
 // GPL License
-char CS_LICENSE[] SEC("license") = "Dual BSD/GPL";
+char LICENSE[] SEC("license") = "Dual BSD/GPL";
