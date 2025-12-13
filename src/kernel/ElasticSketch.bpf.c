@@ -32,6 +32,28 @@ struct {
     .values = {&heavy_part_0},
 };
 
+// Heavy Part 锁 Maps
+struct heavy_locks {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, ES_HEAVY_BUCKET_COUNT);
+    __type(key, uint32_t);
+    __type(value, struct HeavyBucketLock);
+};
+
+// Heavy Part 锁 double buffer
+struct heavy_locks heavy_lock_0 SEC(".maps");
+struct heavy_locks heavy_lock_1 SEC(".maps");
+
+// Heavy Part 锁 buffer 选择 map
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY_OF_MAPS);
+    __uint(max_entries, 1);
+    __type(key, uint32_t);
+    __array(values, struct heavy_locks);
+} select_heavy_lock SEC(".maps") = {
+    .values = {&heavy_lock_0},
+};
+
 // Light Part Maps
 struct light_counters {
     __uint(type, BPF_MAP_TYPE_ARRAY);
@@ -84,6 +106,11 @@ int update(struct xdp_md* ctx) {
     if (!heavy_part)
         return XDP_PASS;
 
+    // 获取当前使用的 Heavy Part 锁
+    void* heavy_lock_map = bpf_map_lookup_elem(&select_heavy_lock, &zero);
+    if (!heavy_lock_map)
+        return XDP_PASS;
+
     // 获取当前使用的 Light Part
     void* light_part = bpf_map_lookup_elem(&select_light_count, &zero);
     if (!light_part)
@@ -92,9 +119,23 @@ int update(struct xdp_md* ctx) {
     // 计算 Heavy Part 桶索引
     uint32_t bucket_idx = hash(&key, ES_HEAVY_SEED, ES_HEAVY_BUCKET_COUNT);
 
+    // 查找数据桶和对应的锁
     struct HeavyBucket* bucket = bpf_map_lookup_elem(heavy_part, &bucket_idx);
     if (!bucket)
         return XDP_PASS;
+
+    struct HeavyBucketLock* lock =
+        bpf_map_lookup_elem(heavy_lock_map, &bucket_idx);
+    if (!lock)
+        return XDP_PASS;
+
+    // 用于存储被踢出的流信息
+    FlowKeyType evicted_flow = {};
+    uint32_t evicted_count = 0;
+    int need_update_light = 0;  // 0: 不更新; 1: 更新当前流; 2: 更新被踢出流
+
+    // 加锁保护 Heavy Part 操作
+    bpf_spin_lock(&lock->lock);
 
     FlowKeyType empty_flow = {};
     // 桶为空，直接插入
@@ -104,24 +145,25 @@ int update(struct xdp_md* ctx) {
         bucket->pos_vote = 1;
         bucket->neg_vote = 0;
         bucket->flag = 0;
+        bpf_spin_unlock(&lock->lock);
         return XDP_PASS;
     }
 
     // 是同一个流，增加正票
     if (__builtin_memcmp(&bucket->flow_id, &key, sizeof(FlowKeyType)) == 0) {
-        __sync_fetch_and_add(&bucket->pos_vote, 1);
+        bucket->pos_vote++;
+        bpf_spin_unlock(&lock->lock);
         return XDP_PASS;
     }
 
     // 是不同的流，增加负票
-    __sync_fetch_and_add(&bucket->neg_vote, 1);
+    bucket->neg_vote++;
 
     if (bucket->pos_vote > 0 &&
         bucket->neg_vote >= ES_LAMBDA * bucket->pos_vote) {
-        // 旧流被踢出
-        FlowKeyType evicted_flow;
+        // 旧流被踢出，保存信息
         __builtin_memcpy(&evicted_flow, &bucket->flow_id, sizeof(FlowKeyType));
-        uint32_t evicted_count = bucket->pos_vote;
+        evicted_count = bucket->pos_vote;
 
         // 标记发生过替换
         bucket->flag = 1;
@@ -131,9 +173,19 @@ int update(struct xdp_md* ctx) {
         bucket->pos_vote = 1;
         bucket->neg_vote = 0;
 
-        // 将被踢出的流更新到 Light Part
-        update_light_part(light_part, &evicted_flow, evicted_count);
+        // 需要更新被踢出流到 Light Part
+        need_update_light = 2;
     } else {
+        // 需要更新当前流到 Light Part
+        need_update_light = 1;
+    }
+
+    bpf_spin_unlock(&lock->lock);
+
+    // 将被踢出的流更新到 Light Part
+    if (need_update_light == 2) {
+        update_light_part(light_part, &evicted_flow, evicted_count);
+    } else if (need_update_light == 1) {
         // 不替换，将当前流更新到 Light Part
         update_light_part(light_part, &key, 1);
     }

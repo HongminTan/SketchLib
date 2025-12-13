@@ -3,6 +3,10 @@
 
 #include "FlowKey.h"
 
+#ifdef __BPF__
+#include <bpf/bpf_helpers.h>
+#endif
+
 // ElasticSketch Heavy Part 桶结构
 struct HeavyBucket {
     // 流标识符
@@ -16,6 +20,13 @@ struct HeavyBucket {
     // 对齐
     uint8_t padding[3];
 };
+
+#ifdef __BPF__
+// Heavy Part 内核态自旋锁
+struct HeavyBucketLock {
+    struct bpf_spin_lock lock;
+};
+#endif
 
 #ifndef __BPF__
 #include "Config.h"
@@ -38,6 +49,10 @@ class ElasticSketchUser : public Sketch {
     int select_heavy_fd_;
     int heavy_fd_[2];
     HeavyBucket* heavy_mmap_[2];
+
+    // Heavy Part 锁
+    int select_heavy_lock_fd_;
+    int heavy_lock_fd_[2];
 
     // Light Part
     int select_light_fd_;

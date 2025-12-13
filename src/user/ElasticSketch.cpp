@@ -3,6 +3,7 @@
 ElasticSketchUser::ElasticSketchUser()
     : skel_(nullptr),
       select_heavy_fd_(-1),
+      select_heavy_lock_fd_(-1),
       select_light_fd_(-1),
       current_active_(0),
       ifindex_(0) {
@@ -10,6 +11,8 @@ ElasticSketchUser::ElasticSketchUser()
     heavy_fd_[1] = -1;
     heavy_mmap_[0] = nullptr;
     heavy_mmap_[1] = nullptr;
+    heavy_lock_fd_[0] = -1;
+    heavy_lock_fd_[1] = -1;
     light_fd_[0] = -1;
     light_fd_[1] = -1;
     light_mmap_[0] = nullptr;
@@ -38,6 +41,25 @@ ElasticSketchUser::ElasticSketchUser()
         exit(-1);
     }
 
+    // 初始化 Heavy Part 锁
+    select_heavy_lock_fd_ = bpf_map__fd(skel_->maps.select_heavy_lock);
+    if (select_heavy_lock_fd_ < 0) {
+        ElasticSketch::destroy(skel_);
+        exit(-1);
+    }
+
+    heavy_lock_fd_[0] = bpf_map__fd(skel_->maps.heavy_lock_0);
+    if (heavy_lock_fd_[0] < 0) {
+        ElasticSketch::destroy(skel_);
+        exit(-1);
+    }
+
+    heavy_lock_fd_[1] = bpf_map__fd(skel_->maps.heavy_lock_1);
+    if (heavy_lock_fd_[1] < 0) {
+        ElasticSketch::destroy(skel_);
+        exit(-1);
+    }
+
     // mmap Heavy Part
     size_t heavy_mmap_size = ES_HEAVY_BUCKET_COUNT * MMAP_STRIDE(HeavyBucket);
     heavy_mmap_[0] = static_cast<HeavyBucket*>(
@@ -56,7 +78,7 @@ ElasticSketchUser::ElasticSketchUser()
         exit(-1);
     }
 
-    // 初始化Light Part
+    // 初始化 Light Part
     select_light_fd_ = bpf_map__fd(skel_->maps.select_light_count);
     if (select_light_fd_ < 0) {
         munmap(heavy_mmap_[0], heavy_mmap_size);
@@ -176,6 +198,14 @@ int ElasticSketchUser::swap() {
     int new_heavy_fd = heavy_fd_[new_active];
     int ret =
         bpf_map_update_elem(select_heavy_fd_, &zero, &new_heavy_fd, BPF_ANY);
+    if (ret < 0) {
+        return -1;
+    }
+
+    // 交换 Heavy Part 锁
+    int new_heavy_lock_fd = heavy_lock_fd_[new_active];
+    ret = bpf_map_update_elem(select_heavy_lock_fd_, &zero, &new_heavy_lock_fd,
+                              BPF_ANY);
     if (ret < 0) {
         return -1;
     }
