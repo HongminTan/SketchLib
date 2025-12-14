@@ -42,6 +42,9 @@ jobs:
           name: build
           path: build/
 
+      - name: Make test binary executable
+        run: chmod +x build/tests/sketch_tests
+
       - name: Test Sketch
         working-directory: build
         run: ./tests/sketch_tests
