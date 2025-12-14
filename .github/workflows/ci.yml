@@ -20,3 +20,8 @@ jobs:
           options: |
             -DBUILD_TESTS=ON
             -DBUILD_EXAMPLES=ON
+      
+      - name: Test Sketch
+        working-directory: build
+        run: ./tests/sketch_tests
+          
