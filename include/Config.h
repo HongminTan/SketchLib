@@ -35,3 +35,7 @@
 #define ES_LIGHT_COLS \
     (ES_LIGHT_MEMORY / ES_LIGHT_ROWS / sizeof(ES_LIGHT_COUNTER_TYPE))
 #define ES_HEAVY_SEED 104
+
+#define MV_ROWS 4
+#define MV_MEMORY (1 * 1024 * 1024)  // 1 MB
+#define MV_COLS (MV_MEMORY / MV_ROWS / sizeof(struct MVBucket))
