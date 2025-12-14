@@ -151,13 +151,17 @@ int update(struct xdp_md* ctx) {
 
     // 是同一个流，增加正票
     if (__builtin_memcmp(&bucket->flow_id, &key, sizeof(FlowKeyType)) == 0) {
-        bucket->pos_vote++;
+        if (bucket->pos_vote < UINT32_MAX) {
+            bucket->pos_vote++;
+        }
         bpf_spin_unlock(&lock->lock);
         return XDP_PASS;
     }
 
     // 是不同的流，增加负票
-    bucket->neg_vote++;
+    if (bucket->neg_vote < UINT32_MAX) {
+        bucket->neg_vote++;
+    }
 
     if (bucket->pos_vote > 0 &&
         bucket->neg_vote >= ES_LAMBDA * bucket->pos_vote) {

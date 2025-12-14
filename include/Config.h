@@ -5,6 +5,16 @@
 // ebpf map 在内存中的 stride 是需要对齐的，不是按 value_type 直接摆放的
 #define MMAP_STRIDE(value_type) round_up(sizeof(value_type), 8)
 
+#ifndef UINT32_MAX
+#define UINT32_MAX 0xFFFFFFFFU
+#endif
+#ifndef INT32_MAX
+#define INT32_MAX 0x7FFFFFFF
+#endif
+#ifndef INT32_MIN
+#define INT32_MIN ((int32_t)0x80000000)
+#endif
+
 #define CM_ROWS 4
 #define CM_MEMORY (1 * 1024 * 1024)  // 1 MB
 #define CM_COUNTER_TYPE uint32_t

@@ -49,8 +49,9 @@ int update(struct xdp_md* ctx) {
         uint32_t index = hash(&key, row, CM_COLS);
         uint32_t offset = (uint32_t)(row * CM_COLS + index);
 
-        CM_COUNTER_TYPE* counter = bpf_map_lookup_elem(current_counters, &offset);
-        if (counter) {
+        CM_COUNTER_TYPE* counter =
+            bpf_map_lookup_elem(current_counters, &offset);
+        if (counter && *counter < UINT32_MAX) {
             __sync_fetch_and_add(counter, 1);
         }
     }

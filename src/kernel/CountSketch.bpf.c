@@ -53,9 +53,13 @@ int update(struct xdp_md* ctx) {
         uint32_t sign_hash = hash(&key, row + CS_ROWS, 2);
         int32_t increment = sign_hash ? 1 : -1;
 
-        CS_COUNTER_TYPE* counter = bpf_map_lookup_elem(current_counters, &offset);
+        CS_COUNTER_TYPE* counter =
+            bpf_map_lookup_elem(current_counters, &offset);
         if (counter) {
-            __sync_fetch_and_add(counter, increment);
+            if ((increment > 0 && *counter < INT32_MAX) ||
+                (increment < 0 && *counter > INT32_MIN)) {
+                __sync_fetch_and_add(counter, increment);
+            }
         }
     }
 
