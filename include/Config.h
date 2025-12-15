@@ -39,3 +39,16 @@
 #define MV_ROWS 4
 #define MV_MEMORY (1 * 1024 * 1024)  // 1 MB
 #define MV_COLS (MV_MEMORY / MV_ROWS / sizeof(struct MVBucket))
+
+#define FR_TOTAL_MEMORY (1 * 1024 * 1024)        // 1 MB
+#define FR_BF_MEMORY (FR_TOTAL_MEMORY * 3 / 10)  // 30% BloomFilter
+#define FR_CT_MEMORY (FR_TOTAL_MEMORY - FR_BF_MEMORY)
+#define FR_BF_NUM_HASHES 3
+#define FR_CT_NUM_HASHES 3
+#define FR_BITS_PER_BYTE 8                                // 每字节位数
+#define FR_BITS_PER_WORD 32                               // 每字位数
+#define FR_BF_NUM_BITS (FR_BF_MEMORY * FR_BITS_PER_BYTE)  // BloomFilter 位数
+#define FR_BF_NUM_WORDS \
+    (FR_BF_NUM_BITS / FR_BITS_PER_WORD)  // BloomFilter 32位字数
+#define FR_CT_SIZE \
+    (FR_CT_MEMORY / sizeof(struct FRBucket))  // CountingTable 桶数
