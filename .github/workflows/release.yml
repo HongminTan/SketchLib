@@ -1,0 +1,38 @@
+name: Release Build
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Project
+      uses: threeal/cmake-action@v2.1.0
+      with:
+        generator: Ninja
+        source-dir: .
+        build-dir: build
+        options: |
+          CMAKE_BUILD_TYPE=Release
+          BUILD_TESTS=OFF
+          BUILD_EXAMPLES=ON
+
+    - name: Create Package
+      run: |
+        cd build
+        cmake --install . --prefix SketchLib-${{ github.ref_name }}
+        tar -czf SketchLib-${{ github.ref_name }}.tar.gz SketchLib-${{ github.ref_name }}
+
+    - name: Upload Release Assets
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload ${{ github.ref_name }} \
+          build/SketchLib-${{ github.ref_name }}.tar.gz \
+          --clobber
