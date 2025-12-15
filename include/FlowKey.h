@@ -12,11 +12,22 @@
 
 struct OneTuple {
     uint32_t ip;
+#ifdef __cplusplus
+    bool operator<(const struct OneTuple& other) const { return ip < other.ip; }
+#endif
 };
 
 struct TwoTuple {
     uint32_t src_ip;
     uint32_t dst_ip;
+#ifdef __cplusplus
+    bool operator<(const struct TwoTuple& other) const {
+        if (src_ip != other.src_ip) {
+            return src_ip < other.src_ip;
+        };
+        return dst_ip < other.dst_ip;
+    }
+#endif
 };
 
 struct FiveTuple {
@@ -26,6 +37,23 @@ struct FiveTuple {
     uint16_t dst_port;
     uint8_t protocol;
     uint8_t padding[3];
+#ifdef __cplusplus
+    bool operator<(const struct FiveTuple& other) const {
+        if (src_ip != other.src_ip) {
+            return src_ip < other.src_ip;
+        }
+        if (dst_ip != other.dst_ip) {
+            return dst_ip < other.dst_ip;
+        }
+        if (src_port != other.src_port) {
+            return src_port < other.src_port;
+        }
+        if (dst_port != other.dst_port) {
+            return dst_port < other.dst_port;
+        }
+        return protocol < other.protocol;
+    }
+#endif
 };
 
 _Static_assert(sizeof(struct OneTuple) == 4, "OneTuple size must be 4 bytes");
