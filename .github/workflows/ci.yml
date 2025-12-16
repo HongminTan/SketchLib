@@ -25,3 +25,15 @@ jobs:
             cd bpftool/src
             make
             echo "$(pwd)" >> $GITHUB_PATH
+  build-ebpf-sketch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4.2.2
+
+      - name: Build Project
+        uses: threeal/cmake-action@v2.1.0
+        with:
+          generator: Ninja
+          source-dir: .
+          build-dir: build
