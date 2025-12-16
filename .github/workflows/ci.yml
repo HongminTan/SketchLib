@@ -26,6 +26,12 @@ jobs:
             make
             echo "$(pwd)" >> $GITHUB_PATH
 
+      - name: Upload bpftool artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpftool
+          path: bpftool/src/bpftool
+
   build-ebpf-sketch:
     runs-on: ubuntu-latest
     needs: build-bpftool
@@ -39,6 +45,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libelf-dev zlib1g-dev llvm clang lld libbpf-dev ninja-build
+
+      - name: Download bpftool artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bpftool
+          path: bpftool-bin
+
+      - name: Add bpftool to PATH
+        run: |
+          chmod +x bpftool-bin/bpftool
+          echo "$(pwd)/bpftool-bin" >> $GITHUB_PATH
 
       - name: Build Project
         uses: threeal/cmake-action@v2.1.0
