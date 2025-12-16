@@ -30,8 +30,16 @@ FlowRadar 基于 XOR 编码和迭代解码，可以恢复所有流及其精确�
 #### 1. 安装 Clang 编译器
 ```bash
 # 安装 Clang 和 LLVM（需要 Clang 18+）
-sudo apt update
-sudo apt install -y clang llvm
+sudo apt-get update
+wget https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 20
+sudo apt-get install -y libelf-dev zlib1g-dev clang-20 llvm-20 llvm-20-dev lld-20 libbpf-dev ninja-build
+sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-20 200
+sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-20 200
+sudo update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-20 200
+sudo update-alternatives --install /usr/bin/llvm-strip llvm-strip /usr/bin/llvm-strip-20 200
+sudo update-alternatives --install /usr/bin/lld lld /usr/bin/lld-20 200
 
 # 验证安装
 clang --version
