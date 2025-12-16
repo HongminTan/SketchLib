@@ -25,11 +25,20 @@ jobs:
             cd bpftool/src
             make
             echo "$(pwd)" >> $GITHUB_PATH
+
   build-ebpf-sketch:
     runs-on: ubuntu-latest
+    needs: build-bpftool
     steps:
       - name: Checkout Project
         uses: actions/checkout@v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libelf-dev zlib1g-dev llvm clang lld libbpf-dev ninja-build
 
       - name: Build Project
         uses: threeal/cmake-action@v2.1.0
