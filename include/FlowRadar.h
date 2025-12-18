@@ -77,6 +77,8 @@ class FlowRadarUser : public Sketch {
     FlowRadarUser(const FlowRadarUser&) = delete;
     FlowRadarUser& operator=(const FlowRadarUser&) = delete;
 
+    struct FlowRadar* get_skel() const { return skel_; }
+
     /**
      * @brief 挂载到网卡
      * @param ifname 网卡名称

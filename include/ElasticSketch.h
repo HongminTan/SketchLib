@@ -75,6 +75,8 @@ class ElasticSketchUser : public Sketch {
     ElasticSketchUser(const ElasticSketchUser&) = delete;
     ElasticSketchUser& operator=(const ElasticSketchUser&) = delete;
 
+    struct ElasticSketch* get_skel() const { return skel_; }
+
     /**
      * @brief 挂载到网卡
      * @param ifname 网卡名称

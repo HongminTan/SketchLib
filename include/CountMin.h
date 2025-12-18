@@ -32,6 +32,8 @@ class CountMinUser : public Sketch {
     CountMinUser(const CountMinUser&) = delete;
     CountMinUser& operator=(const CountMinUser&) = delete;
 
+    struct CountMin* get_skel() const { return skel_; }
+
     /**
      * @brief 挂载内核态程序到网卡
      * @param ifname 网卡名称

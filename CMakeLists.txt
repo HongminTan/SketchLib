@@ -109,3 +109,6 @@ target_include_directories(SketchEBPFLib PUBLIC
         ${AUTOGEN_DIR}
         ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(SketchEBPFLib PUBLIC bpf)
+
+enable_testing()
+add_subdirectory(tests)

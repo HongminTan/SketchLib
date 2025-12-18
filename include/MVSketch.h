@@ -63,6 +63,8 @@ class MVSketchUser : public Sketch {
     MVSketchUser(const MVSketchUser&) = delete;
     MVSketchUser& operator=(const MVSketchUser&) = delete;
 
+    struct MVSketch* get_skel() const { return skel_; }
+
     /**
      * @brief 挂载到网卡
      * @param ifname 网卡名称

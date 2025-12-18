@@ -33,6 +33,8 @@ class CountSketchUser : public Sketch {
     CountSketchUser(const CountSketchUser&) = delete;
     CountSketchUser& operator=(const CountSketchUser&) = delete;
 
+    struct CountSketch* get_skel() const { return skel_; }
+
     /**
      * @brief 挂载到网卡
      * @param ifname 网卡名称
