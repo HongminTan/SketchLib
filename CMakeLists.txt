@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include_directories(/usr/local/share/dpdk/examples/common/)
+
 find_package(PkgConfig REQUIRED QUIET)
 
 pkg_check_modules(DPDK REQUIRED IMPORTED_TARGET libdpdk)
