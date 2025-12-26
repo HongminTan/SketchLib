@@ -400,7 +400,14 @@ int main(int argc, char *argv[])
             ft->dp = dp;
             ft->proto = proto_id;
 
-            unsigned int len = sizeof(Fivetuple) / sizeof(char);
+            // 打印五元组
+            printf("5-tuple: sip=");
+            show_ip(ft->sip);
+            printf("         dip=");
+            show_ip(ft->dip);
+            printf("         sport=%u, dport=%u, proto=%u\n", ft->sp, ft->dp, ft->proto);
+
+            unsigned int len = sizeof(Fivetuple);
 
             // printf("size of Fivetuple: %d\n", sizeof(Fivetuple));
             // printf("size of char %d\n", sizeof(char));
@@ -440,6 +447,7 @@ int main(int argc, char *argv[])
                 counters[i][j] = (uint32_t)newval;
             }
 
+            
             pkts_count++;
 
             if (pkts_count % 120000000 == 0)
