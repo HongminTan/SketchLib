@@ -9,16 +9,24 @@ cat /proc/meminfo | grep -i huge
 ### 分配
 
 ```bash
-echo 512 > /proc/sys/vm/nr_hugepages
+echo 1024 > /proc/sys/vm/nr_hugepages
 ```
 | root用户执行，sudo可能无效
 
 ### 清除
 
+#### 清除空闲的大页
 ```bash
 echo 0 > /proc/sys/vm/nr_hugepages
 ```
 | root用户执行，sudo可能无效
+
+#### 将被占用的大页变为空闲
+
+```bash
+rm -f /dev/hugepages/*
+```
+| 有些dpdk程序异常退出后可能不会清理占用的大页，需要手动清理
 
 ## DPDK网卡管理
 
