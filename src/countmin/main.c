@@ -43,7 +43,7 @@
 #define TX_RING_SIZE 1024
 #define PKTS_BOUND 10000000
 
-#define NUM_MBUFS 8191
+#define NUM_MBUFS 8192
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
@@ -193,8 +193,8 @@ void show_ip(uint32_t ip)
 uint64_t get_time()
 {
     struct timespec time1 = {0, 0};
-    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time1);
-    uint64_t ns = time1.tv_sec * 1000000000 + time1.tv_nsec;
+    clock_gettime(CLOCK_MONOTONIC, &time1);
+    uint64_t ns = (uint64_t)time1.tv_sec * 1000000000ULL + (uint64_t)time1.tv_nsec;
 
     return ns;
 }
@@ -379,6 +379,16 @@ int main(int argc, char *argv[])
             dip = rte_be_to_cpu_32(ipv4_hdr->dst_addr);
             proto_id = ipv4_hdr->next_proto_id;
 
+            /* Only handle TCP packets; ensure packet length covers TCP header */
+            if (proto_id != IPPROTO_TCP) {
+                rte_pktmbuf_free(buf);
+                continue;
+            }
+            if (rte_pktmbuf_pkt_len(buf) < (sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) + sizeof(struct rte_tcp_hdr))) {
+                rte_pktmbuf_free(buf);
+                continue;
+            }
+
             struct rte_tcp_hdr *tcp_hdr = rte_pktmbuf_mtod_offset(buf, struct rte_tcp_hdr *, sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr));
             sp = rte_be_to_cpu_16(tcp_hdr->src_port);
             dp = rte_be_to_cpu_16(tcp_hdr->dst_port);
@@ -423,7 +433,7 @@ int main(int argc, char *argv[])
             uint32_t inc = 2;
             for (int i = 0; i < M; i++)
             {
-                uint64_t j = murmur3((const void *)ft, sizeof(ft), i * i) % N; // crc32(buf, i + 1) % n;
+                uint64_t j = murmur3((const void *)ft, sizeof(*ft), i * i) % N; // crc32(buf, i + 1) % n;
                 uint64_t newval = counters[i][j] + inc;
                 if (newval >= 0xffffffff)
                     newval = 0xffffffff;
@@ -437,8 +447,11 @@ int main(int argc, char *argv[])
                 uint64_t end_cycle = rdtsc();
                 uint64_t end_time = get_time();
 
-                printf("avg throughoutput:%ld\n", pkts_count * 1000000000 / (end_time - start_time));
-                printf("avg cpu/packet:%ld\n", (end_cycle - start_cycle) / pkts_count);
+                unsigned long long throughput = (unsigned long long)((__uint128_t)pkts_count * 1000000000ULL / (end_time - start_time));
+                unsigned long long avg_cpu = (unsigned long long)((end_cycle - start_cycle) / (pkts_count ? pkts_count : 1));
+
+                printf("avg throughput:%llu\n", throughput);
+                printf("avg cpu/packet:%llu\n", avg_cpu);
                 // printf("%ld\n", (end_cycle - start_cycle));
                 // if (pkts_count / 120000000 == 2)
                 // {
