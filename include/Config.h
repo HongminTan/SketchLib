@@ -52,3 +52,19 @@
     (FR_BF_NUM_BITS / FR_BITS_PER_WORD)  // BloomFilter 32位字数
 #define FR_CT_SIZE \
     (FR_CT_MEMORY / sizeof(struct FRBucket))  // CountingTable 桶数
+
+#define MD_MEMORY (1 * 1024 * 1024)  // 1 MB
+#define MD_NUM_SKETCHLETS 4          // 虚拟 sketchlet 数量
+#define MD_MAX_PROBE 32              // 最大线性探测距离
+
+// Sketchlet 类型枚举
+#define SKETCHLET_EMPTY 0
+#define SKETCHLET_CM 1
+#define SKETCHLET_CS 2
+#define SKETCHLET_MV 3
+#define SKETCHLET_ES 4
+#define SKETCHLET_FR 5
+
+// sketchlet id -> type 映射
+#define MD_SKETCHLET_TYPES \
+    { SKETCHLET_CM, SKETCHLET_CS, SKETCHLET_MV, SKETCHLET_MV }
